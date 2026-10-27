@@ -1,7 +1,8 @@
 # 🥊🏠 House Fight
 
 La sfida delle faccende di casa per due. Ogni faccenda vale dei punti, chi la fa la segna,
-**l'altro la deve validare**, e a fine mese chi ha più punti si fa offrire la cena.
+**l'altro la deve validare**, e a fine mese chi perde offre una cena che vale
+**la differenza di punti × un moltiplicatore** (es. 0,50 € a punto).
 
 È una **PWA**: si apre dal browser e si installa sulla schermata Home (iPhone e Android),
 funziona anche offline per la consultazione e manda **notifiche push**.
@@ -15,7 +16,9 @@ funziona anche offline per la consultazione e manda **notifiche push**.
 - **Validazione**: i punti contano solo dopo che l'altro ha premuto ✓ (oppure ✕ spiegando il motivo).
   Il database impedisce di validare le proprie faccende o di cambiarne i punti.
 - **🔔 Stuzzica**: ricorda al partner che hai faccende in attesa
-- **Cena di fine mese**: banner con chi vince e chi paga, da segnare come "pagata"; albo d'oro nelle statistiche
+- **Cena di fine mese**: vale `distacco × €/punto` (moltiplicatore in *Profilo*, arrotondato ai 50 cent).
+  In home vedi in diretta "se finisse ora" quanto vale la cena; a fine mese un banner dice chi paga e
+  quanto, da segnare come "pagata" (l'importo resta registrato). Albo d'oro ed euro vinti nelle statistiche.
 - **Statistiche** per mese, per anno e da sempre: gara giorno per giorno, punti per mese, classifica
   delle faccende, giorni della settimana, record personali
 - **Storico** filtrabile per persona e stato
@@ -34,7 +37,7 @@ npm run dev
 
 ## Messa online (gratis)
 
-Serve: un progetto [Supabase](https://supabase.com) (piano gratuito) e GitHub Pages.
+Serve: un progetto [Supabase](https://supabase.com) (piano Free) e [Vercel](https://vercel.com) (piano Hobby).
 
 ### 1. Database
 
@@ -59,17 +62,17 @@ npx supabase secrets set \
 npx supabase functions deploy notify --no-verify-jwt
 ```
 
-### 3. GitHub Pages
+Per la notifica del vincitore il primo del mese: **Database → Extensions** abilita `pg_cron` e
+`pg_net`, poi esegui `supabase/cron.sql` (dopo averci messo id del progetto e `CRON_SECRET`).
 
-Nel repository GitHub:
+### 3. Vercel
 
-1. **Settings → Pages → Source: GitHub Actions** (sul piano gratuito il repo deve essere pubblico).
-2. **Settings → Secrets and variables → Actions**
-   - *Variables*: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (la chiave *anon/publishable*, è pubblica
-     per design: i dati sono protetti dalle regole RLS), `VITE_VAPID_PUBLIC_KEY`
-   - *Secrets*: `CRON_SECRET` (la stessa stringa usata sopra)
-3. Ogni push su `main` pubblica l'app su `https://<utente>.github.io/<repo>/`.
-   Il workflow *Risultato del mese* manda la notifica del vincitore il primo di ogni mese.
+1. Su vercel.com → **Add New → Project** → importa questo repository (va bene anche privato).
+   Vercel riconosce Vite da solo.
+2. In **Environment Variables** aggiungi `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+   (la chiave *anon/publishable*: è pubblica per design, i dati sono protetti dalle regole RLS)
+   e `VITE_VAPID_PUBLIC_KEY`. Senza queste l'app parte in modalità demo.
+3. **Deploy**. Ogni push su `main` aggiorna l'app su `https://<progetto>.vercel.app`.
 
 ### 4. Installazione sui telefoni
 

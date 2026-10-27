@@ -4,6 +4,8 @@ export interface Household {
   id: string
   name: string
   invite_code: string
+  /** € per ogni punto di distacco a fine mese */
+  dinner_rate: number
 }
 
 export interface Member {
@@ -45,6 +47,7 @@ export interface Completion {
 export interface Dinner {
   household_id: string
   month: string
+  amount: number | null
   paid_at: string
 }
 
@@ -89,6 +92,7 @@ export interface Backend {
   joinHousehold(code: string, profile: Profile): Promise<void>
   updateProfile(profile: Profile): Promise<void>
   renameHousehold(name: string): Promise<void>
+  setDinnerRate(rate: number): Promise<void>
 
   saveChore(chore: { id?: string; name: string; emoji: string; points: number }): Promise<void>
   setChoreArchived(id: string, archived: boolean): Promise<void>
@@ -96,7 +100,7 @@ export interface Backend {
   logCompletion(choreId: string, opts: { note?: string; doneAt?: Date }): Promise<Completion>
   reviewCompletion(id: string, approve: boolean, note?: string): Promise<Completion>
   deleteCompletion(id: string): Promise<void>
-  setDinnerPaid(month: string, paid: boolean): Promise<void>
+  setDinnerPaid(month: string, paid: boolean, amount?: number): Promise<void>
 
   savePushSubscription(sub: PushSubscriptionJSON): Promise<void>
   removePushSubscription(endpoint: string): Promise<void>

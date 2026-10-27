@@ -71,7 +71,10 @@ export function createSupabaseBackend(url: string, key: string): Backend {
         allCompletions(hid),
       ])
       fail(h.error); fail(m.error); fail(c.error); fail(d.error)
-      return { household: h.data, members: m.data!, chores: c.data!, dinners: d.data!, completions: comps }
+      // numeric di Postgres può arrivare come stringa
+      const household = { ...h.data, dinner_rate: Number(h.data.dinner_rate) }
+      const dinners = d.data!.map((x) => ({ ...x, amount: x.amount == null ? null : Number(x.amount) }))
+      return { household, members: m.data!, chores: c.data!, dinners, completions: comps }
     },
 
     subscribe(hid, onChange) {
@@ -114,6 +117,11 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       fail(error)
     },
 
+    async setDinnerRate(rate) {
+      const { error } = await sb.from('households').update({ dinner_rate: rate }).eq('id', await myHouseholdId())
+      fail(error)
+    },
+
     async saveChore({ id, name, emoji, points }) {
       if (id) {
         const { error } = await sb.from('chores').update({ name, emoji, points }).eq('id', id)
@@ -151,10 +159,10 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       const { error } = await sb.from('completions').delete().eq('id', id)
       fail(error)
     },
-    async setDinnerPaid(month, paid) {
+    async setDinnerPaid(month, paid, amount) {
       const hid = await myHouseholdId()
       const { error } = paid
-        ? await sb.from('dinners').upsert({ household_id: hid, month })
+        ? await sb.from('dinners').upsert({ household_id: hid, month, amount: amount ?? null })
         : await sb.from('dinners').delete().eq('household_id', hid).eq('month', month)
       fail(error)
     },

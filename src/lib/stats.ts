@@ -31,14 +31,25 @@ export interface MonthResult {
   winner: Member | null // null = pareggio
   loser: Member | null
   margin: number
+  /** Valore della cena in €: distacco × moltiplicatore */
+  amount: number
 }
 
-export function monthResult(all: Completion[], members: Member[], month: string): MonthResult {
+/** Distacco × €/punto, arrotondato ai 50 centesimi */
+export const dinnerValue = (margin: number, rate: number) => Math.round(margin * rate * 2) / 2
+
+export function monthResult(all: Completion[], members: Member[], month: string, rate: number): MonthResult {
   const t = totals(approved(inMonth(all, month)), members)
   const [a, b] = [...members].sort((x, y) => t[y.user_id] - t[x.user_id])
-  if (!a || !b || t[a.user_id] === t[b.user_id]) return { month, totals: t, winner: null, loser: null, margin: 0 }
-  return { month, totals: t, winner: a, loser: b, margin: t[a.user_id] - t[b.user_id] }
+  if (!a || !b || t[a.user_id] === t[b.user_id]) return { month, totals: t, winner: null, loser: null, margin: 0, amount: 0 }
+  const margin = t[a.user_id] - t[b.user_id]
+  return { month, totals: t, winner: a, loser: b, margin, amount: dinnerValue(margin, rate) }
 }
+
+const eur = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+const eurCents = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+/** 55 € oppure 22,50 € */
+export const formatEur = (v: number) => (Number.isInteger(v) ? eur : eurCents).format(v)
 
 /** Punti cumulati giorno per giorno nel mese, per ciascun giocatore */
 export function cumulativeByDay(cs: Completion[], members: Member[], month: string) {

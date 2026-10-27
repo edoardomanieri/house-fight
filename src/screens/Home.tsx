@@ -2,7 +2,7 @@ import { useMemo, useState, type MouseEvent } from 'react'
 import { Avatar, Empty, Sheet } from '../components/ui'
 import { daysLeftInMonth, monthKey, monthLabel, shiftMonth, timeAgo, relativeDay } from '../lib/dates'
 import { confetti, floatPoints, haptic } from '../lib/fx'
-import { approved, currentStreak, inMonth, monthResult, totals } from '../lib/stats'
+import { approved, currentStreak, dinnerValue, formatEur, inMonth, monthResult, totals } from '../lib/stats'
 import type { Chore, Completion } from '../lib/types'
 import { useGame } from '../store'
 
@@ -34,7 +34,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
     const months = new Set(data.completions.map((c) => monthKey(c.done_at)))
     return [1, 2, 3].map((i) => shiftMonth(month, -i))
       .filter((m) => months.has(m) && !paid.has(m))
-      .map((m) => monthResult(data.completions, data.members, m))
+      .map((m) => monthResult(data.completions, data.members, m, data.household.dinner_rate))
   }, [data, month])
 
   async function review(c: Completion, ok: boolean, note?: string, ev?: MouseEvent) {
@@ -58,6 +58,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
   const leader = partner && score[me.user_id] !== score[partner.user_id]
     ? (score[me.user_id] > score[partner.user_id] ? me : partner) : null
   const gap = partner ? Math.abs(score[me.user_id] - score[partner.user_id]) : 0
+  const stake = dinnerValue(gap, data.household.dinner_rate)
   const left = daysLeftInMonth()
 
   return (
@@ -83,6 +84,11 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
             : !leader ? (score[me.user_id] ? 'Parità perfetta. Chi farà la prossima mossa? 🤺' : 'Il mese è appena iniziato: fai la prima mossa! 💪')
             : leader.user_id === me.user_id ? `Sei avanti di ${gap} punti 😎` : `${partner.display_name} è avanti di ${gap} punti: rimonta! 💪`}
         </p>
+        {leader && stake > 0 && (
+          <div className="stake">
+            🍽️ Se finisse ora: {leader.user_id === me.user_id ? `${partner!.display_name} ti offre` : 'offri tu'} una cena da <b>{formatEur(stake)}</b>
+          </div>
+        )}
       </section>
 
       {!partner && (
@@ -100,12 +106,13 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
             <strong>{monthLabel(r.month)}</strong>
             {r.winner && r.loser ? (
               <span>
-                Vince {r.winner.emoji} <b>{r.winner.display_name}</b> ({r.totals[r.winner.user_id]} a {r.totals[r.loser.user_id]}):{' '}
-                {r.loser.user_id === me.user_id ? 'tocca a te offrire la cena!' : `${r.loser.display_name} ti offre la cena!`}
+                Vince {r.winner.emoji} <b>{r.winner.display_name}</b> di {r.margin} punti ({r.totals[r.winner.user_id]} a {r.totals[r.loser.user_id]}):{' '}
+                {r.loser.user_id === me.user_id ? 'tocca a te offrire una cena da ' : `${r.loser.display_name} ti offre una cena da `}
+                <b className="eur">{formatEur(r.amount)}</b>
               </span>
             ) : <span>Pareggio {r.totals[me.user_id]} a {partner ? r.totals[partner.user_id] : 0}: cena alla romana 🍝</span>}
           </div>
-          <button className="btn small" onClick={() => run(() => backend.setDinnerPaid(r.month, true), 'Buon appetito! 🍷').then(() => confetti())}>Fatto ✓</button>
+          <button className="btn small" onClick={() => run(() => backend.setDinnerPaid(r.month, true, r.amount), 'Buon appetito! 🍷').then(() => confetti())}>Fatto ✓</button>
         </section>
       ))}
 

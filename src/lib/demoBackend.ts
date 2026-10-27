@@ -70,9 +70,9 @@ function seed(): DB {
   completions.sort((a, b) => b.done_at.localeCompare(a.done_at))
   const dinners = [2, 3, 4, 5, 6, 7, 8, 9].map((i) => {
     const m = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    return { household_id: HID, month: `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`, paid_at: now.toISOString() }
+    return { household_id: HID, month: `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`, amount: null, paid_at: now.toISOString() }
   })
-  return { household: { id: HID, name: 'Casa nostra', invite_code: 'DEMO42' }, members, chores, completions, dinners }
+  return { household: { id: HID, name: 'Casa nostra', invite_code: 'DEMO42', dinner_rate: 0.5 }, members, chores, completions, dinners }
 }
 
 export function createDemoBackend(): Backend {
@@ -115,7 +115,11 @@ export function createDemoBackend(): Backend {
       try { localStorage.removeItem(KEY); localStorage.removeItem(USER_KEY) } catch { /* ignora */ }
       authListeners.forEach((cb) => cb(currentUser()))
     },
-    async load() { return read() },
+    async load() {
+      const db = read()
+      db.household.dinner_rate ??= 0.5 // dati demo salvati prima di questa opzione
+      return db
+    },
     subscribe(_hid, onChange) {
       const handler = (ev: MessageEvent<ChangeEvent>) => onChange(ev.data)
       channel?.addEventListener('message', handler)
@@ -128,6 +132,7 @@ export function createDemoBackend(): Backend {
       mutate((db) => { db.members = db.members.map((m) => (m.user_id === me ? { ...m, ...p } : m)) })
     },
     async renameHousehold(name) { mutate((db) => { db.household.name = name }) },
+    async setDinnerRate(rate) { mutate((db) => { db.household.dinner_rate = rate }) },
     async saveChore({ id, name, emoji, points }) {
       mutate((db) => {
         if (id) db.chores = db.chores.map((c) => (c.id === id ? { ...c, name, emoji, points } : c))
@@ -161,10 +166,10 @@ export function createDemoBackend(): Backend {
     async deleteCompletion(id) {
       mutate((db) => { db.completions = db.completions.filter((x) => x.id !== id) })
     },
-    async setDinnerPaid(month, paid) {
+    async setDinnerPaid(month, paid, amount) {
       mutate((db) => {
         db.dinners = db.dinners.filter((d) => d.month !== month)
-        if (paid) db.dinners.push({ household_id: HID, month, paid_at: new Date().toISOString() })
+        if (paid) db.dinners.push({ household_id: HID, month, amount: amount ?? null, paid_at: new Date().toISOString() })
       })
     },
     async savePushSubscription() {},

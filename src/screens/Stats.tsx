@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChoreBars, GroupedBars, RaceChart } from '../components/charts'
 import { Empty, PeriodNav, Segmented } from '../components/ui'
 import { MONTHS, MONTHS_SHORT, WEEKDAYS_SHORT, dayKey, monthKey, monthLabel, shiftMonth } from '../lib/dates'
-import { approved, bestStreak, byChore, byMonth, byWeekday, counts, cumulativeByDay, inMonth, inYear, monthResult, totals } from '../lib/stats'
+import { approved, bestStreak, byChore, byMonth, byWeekday, counts, cumulativeByDay, formatEur, inMonth, inYear, monthResult, totals } from '../lib/stats'
 import type { Completion, Member } from '../lib/types'
 import { useGame } from '../store'
 
@@ -26,7 +26,13 @@ export function StatsScreen() {
     const cur = monthKey(new Date())
     return keys.filter((k) => k < cur && (view === 'all' || (view === 'year' && k.startsWith(String(year)))))
   }, [data.completions, view, year])
-  const results = useMemo(() => monthsInScope.map((m) => monthResult(data.completions, members, m)), [monthsInScope, data.completions, members])
+  const rate = data.household.dinner_rate
+  const results = useMemo(() => monthsInScope.map((m) => {
+    const r = monthResult(data.completions, members, m, rate)
+    // per le cene già pagate vale l'importo registrato allora
+    const paid = data.dinners.find((d) => d.month === m)
+    return paid?.amount != null ? { ...r, amount: paid.amount } : r
+  }), [monthsInScope, data.completions, data.dinners, members, rate])
 
   return (
     <div className="screen">
@@ -86,7 +92,7 @@ export function StatsScreen() {
                   <span className="row-emoji">{r.winner ? r.winner.emoji : '🤝'}</span>
                   <div className="row-main">
                     <strong>{monthLabel(r.month)}</strong>
-                    <small>{r.winner ? `${r.winner.display_name} vince di ${r.margin} pt · cena offerta da ${r.loser!.display_name}` : 'Pareggio'}</small>
+                    <small>{r.winner ? `${r.winner.display_name} vince di ${r.margin} pt · cena da ${formatEur(r.amount)} offerta da ${r.loser!.display_name}` : 'Pareggio · alla romana'}</small>
                   </div>
                   <span className={`chip ${paid ? 'chip-approved' : 'chip-pending'}`}>{paid ? '✓ Pagata' : '⏳ Da pagare'}</span>
                 </li>
@@ -104,6 +110,7 @@ function Tiles({ members, ok, scope, results }: { members: Member[]; ok: Complet
   const n = counts(ok, members)
   const rejected = counts(scope.filter((c) => c.status === 'rejected'), members)
   const wins = Object.fromEntries(members.map((m) => [m.user_id, results?.filter((r) => r.winner?.user_id === m.user_id).length ?? 0]))
+  const won = Object.fromEntries(members.map((m) => [m.user_id, results?.filter((r) => r.winner?.user_id === m.user_id).reduce((a, r) => a + r.amount, 0) ?? 0]))
   return (
     <div className="tiles">
       {members.map((m) => (
@@ -111,7 +118,7 @@ function Tiles({ members, ok, scope, results }: { members: Member[]; ok: Complet
           <div className="tile-who">{m.emoji} {m.display_name}</div>
           <div className="tile-big">{pts[m.user_id]}<small> pt</small></div>
           <div className="tile-sub">{n[m.user_id]} faccende{rejected[m.user_id] ? ` · ${rejected[m.user_id]} rifiutate` : ''}</div>
-          {results && <div className="tile-sub">🏆 {wins[m.user_id]} mesi vinti</div>}
+          {results && <div className="tile-sub">🏆 {wins[m.user_id]} mesi vinti · 🍽️ {formatEur(won[m.user_id])} di cene</div>}
         </div>
       ))}
     </div>

@@ -69,7 +69,10 @@ async function monthly() {
   const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
   const monthName = MONTHS[start.getUTCMonth()]
 
-  const { data: households } = await admin.from('households').select('id')
+  const fmt = (v: number) => new Intl.NumberFormat('it-IT', {
+    style: 'currency', currency: 'EUR', minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2,
+  }).format(v)
+  const { data: households } = await admin.from('households').select('id, dinner_rate')
   for (const h of households ?? []) {
     const members = await membersOf(h.id)
     if (members.length < 2) continue
@@ -80,6 +83,8 @@ async function monthly() {
     for (const r of rows ?? []) totals.set(r.user_id, (totals.get(r.user_id) ?? 0) + r.points)
     const [a, b] = [...members].sort((x, y) => (totals.get(y.user_id)! - totals.get(x.user_id)!))
     const pa = totals.get(a.user_id)!, pb = totals.get(b.user_id)!
+    // stessa formula dell'app: distacco × €/punto, arrotondato ai 50 centesimi
+    const amount = fmt(Math.round((pa - pb) * Number(h.dinner_rate) * 2) / 2)
     if (pa === pb) {
       await pushTo(members.map((m) => m.user_id), {
         title: `🤝 Pareggio a ${monthName}!`,
@@ -88,11 +93,11 @@ async function monthly() {
     } else {
       await pushTo([a.user_id], {
         title: `🏆 Hai vinto ${monthName}!`,
-        body: `${pa} a ${pb}: ${b.display_name} ti offre la cena 🍽️`, tag: `month-${start.toISOString().slice(0, 7)}`, url: './#/',
+        body: `${pa} a ${pb}: ${b.display_name} ti offre una cena da ${amount} 🍽️`, tag: `month-${start.toISOString().slice(0, 7)}`, url: './#/',
       })
       await pushTo([b.user_id], {
         title: `😅 ${a.display_name} ha vinto ${monthName}`,
-        body: `${pa} a ${pb}: tocca a te offrire la cena 🍽️. Rifatti questo mese!`, tag: `month-${start.toISOString().slice(0, 7)}`, url: './#/',
+        body: `${pa} a ${pb}: tocca a te offrire una cena da ${amount} 🍽️. Rifatti questo mese!`, tag: `month-${start.toISOString().slice(0, 7)}`, url: './#/',
       })
     }
   }

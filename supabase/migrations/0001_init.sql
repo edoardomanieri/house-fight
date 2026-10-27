@@ -9,6 +9,8 @@ create table public.households (
   id          uuid primary key default gen_random_uuid(),
   name        text not null default 'Casa' check (char_length(name) between 1 and 40),
   invite_code text not null unique default upper(substr(md5(gen_random_uuid()::text), 1, 6)),
+  -- valore della cena: (punti del vincitore − punti del perdente) × dinner_rate €
+  dinner_rate numeric(6, 2) not null default 0.5 check (dinner_rate >= 0 and dinner_rate <= 100),
   created_at  timestamptz not null default now()
 );
 
@@ -53,10 +55,11 @@ create table public.completions (
 );
 create index completions_household_done_idx on public.completions (household_id, done_at);
 
--- Cene di fine mese segnate come pagate
+-- Cene di fine mese segnate come pagate (con l'importo calcolato al momento)
 create table public.dinners (
   household_id uuid not null references public.households(id) on delete cascade,
   month        text not null check (month ~ '^\d{4}-\d{2}$'),
+  amount       numeric(8, 2),
   paid_at      timestamptz not null default now(),
   primary key (household_id, month)
 );
