@@ -1,0 +1,4 @@
+# Configurazione minima per la Supabase CLI
+[functions.notify]
+# Il token utente (o il segreto del cron) viene verificato dentro la funzione
+verify_jwt = false
