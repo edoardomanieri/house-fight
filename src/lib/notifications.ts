@@ -11,10 +11,42 @@ export const isStandalone = () =>
 
 export const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
 
+/**
+ * Registra il service worker e tiene l'app sempre all'ultima versione pubblicata:
+ * controlla se c'è un deploy nuovo all'avvio, ogni volta che l'app torna in primo piano
+ * (la PWA installata resta aperta in background per giorni) e ogni ora; quando il nuovo
+ * service worker prende il controllo la pagina si ricarica con il codice nuovo.
+ */
 export function registerServiceWorker() {
   if (!('serviceWorker' in navigator) || import.meta.env.DEV) return
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW', e))
+  const sw = navigator.serviceWorker
+  // Al primo avvio non c'è un service worker precedente: quando prende il controllo non serve ricaricare
+  let hadController = !!sw.controller
+  let reloading = false
+  const reload = () => {
+    if (reloading) return
+    reloading = true
+    location.reload()
+  }
+  sw.addEventListener('controllerchange', () => {
+    if (!hadController) { hadController = true; return }
+    // Non buttare via quello che si sta scrivendo in un pannello aperto: si aggiorna appena l'app va in background
+    if (document.visibilityState === 'visible' && document.querySelector('dialog[open]')) {
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') reload() })
+    } else reload()
+  })
+
+  window.addEventListener('load', async () => {
+    try {
+      // updateViaCache 'none': sw.js si scarica sempre dal server, mai dalla cache HTTP
+      const reg = await sw.register('./sw.js', { updateViaCache: 'none' })
+      const check = () => { reg.update().catch(() => {}) }
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check() })
+      window.addEventListener('online', check)
+      setInterval(check, 60 * 60 * 1000)
+    } catch (e) {
+      console.warn('SW', e)
+    }
   })
 }
 

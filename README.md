@@ -14,6 +14,8 @@ funziona anche offline per la consultazione e manda **notifiche push**.
   (cambiare il valore non tocca i punti già guadagnati)
 - **Segna "fatta"** con un tocco, anche per ieri o per qualche giorno fa, con una nota facoltativa;
   se l'hai fatta solo in parte (es. stirato pochi panni) scegli **½ Metà** e vale metà dei punti
+- **✨ Una tantum**: per una cosa che capita una volta sola (es. pulire le grondaie) scegli nome, icona e punti
+  al momento; va validata come le altre ma non finisce tra le faccende salvate
 - **Validazione**: i punti contano solo dopo che l'altro ha premuto ✓ (oppure ✕ spiegando il motivo).
   Il database impedisce di validare le proprie faccende o di cambiarne i punti.
 - **🔔 Stuzzica**: ricorda al partner che hai faccende in attesa
@@ -23,6 +25,8 @@ funziona anche offline per la consultazione e manda **notifiche push**.
 - **Statistiche** per mese, per anno e da sempre: gara giorno per giorno, punti per mese, classifica
   delle faccende, giorni della settimana, record personali
 - **Storico** filtrabile per persona e stato
+- **Sempre aggiornata**: dopo ogni deploy l'app installata si aggiorna da sola appena torna in primo piano
+  (se hai un pannello aperto aspetta che la chiudi o la metti in background)
 - **Notifiche**: nuova faccenda da validare, faccenda validata/rifiutata, stuzzicata, risultato del mese.
   Badge sull'icona con il numero di faccende da validare.
 
@@ -45,7 +49,7 @@ Serve: un progetto [Supabase](https://supabase.com) (piano Free) e [Vercel](http
 1. Crea un progetto su Supabase.
 2. **SQL Editor** → incolla ed esegui `supabase/migrations/0001_init.sql`, poi `0002_grants.sql`
    (i permessi delle API: senza, l'app dà "permission denied for table") e `0003_decimal_points.sql`
-   (punti con la virgola), poi `0004_points_scale.sql` (scala da 0,5 a 7 punti) e `0005_half_completions.sql` (faccende fatte a metà).
+   (punti con la virgola), poi `0004_points_scale.sql` (scala da 0,5 a 7 punti) `0005_half_completions.sql` (faccende fatte a metà) e `0006_one_off_completions.sql` (faccende una tantum).
 3. **Authentication → Sign In / Providers → Email**: per semplicità puoi disattivare
    *Confirm email* (altrimenti imposta in **Authentication → URL Configuration** come *Site URL*
    l'indirizzo dell'app).
@@ -98,12 +102,14 @@ src/
     demoBackend.ts          dati locali per la modalità demo
     stats.ts                calcoli di punteggi e statistiche
     notifications.ts        push, notifiche locali, badge
-public/sw.js                service worker (offline + push)
+public/sw.js                service worker (offline + push); ogni build ci scrive la sua versione
+                            (vite.config.ts) così le PWA installate si aggiornano da sole
 supabase/
   migrations/0001_init.sql  tabelle, regole di sicurezza (RLS), trigger di validazione
   migrations/0002_grants.sql permessi delle tabelle per i ruoli delle API
   migrations/0003_decimal_points.sql punti con la virgola
   migrations/0004_points_scale.sql   scala dei punti (max 7) e faccende di partenza
   migrations/0005_half_completions.sql faccende fatte a metà
+  migrations/0006_one_off_completions.sql faccende una tantum
   functions/notify/         Edge Function che invia le notifiche push
 ```

@@ -1,8 +1,8 @@
-import { useMemo, useState, type MouseEvent } from 'react'
-import { Avatar, Empty, HalfTag, Sheet } from '../components/ui'
+import { useMemo, useState, type FormEvent, type MouseEvent } from 'react'
+import { Avatar, CHORE_EMOJIS, CompletionTags, EmojiGrid, Empty, PointsField, Sheet } from '../components/ui'
 import { daysLeftInMonth, monthKey, monthLabel, shiftMonth, timeAgo, relativeDay } from '../lib/dates'
 import { confetti, floatPoints, haptic } from '../lib/fx'
-import { addPts, approved, currentStreak, dinnerValue, formatEur, formatPts, inMonth, monthResult, totals } from '../lib/stats'
+import { addPts, approved, currentStreak, dinnerValue, formatEur, formatPts, inMonth, monthResult, parsePoints, totals } from '../lib/stats'
 import type { Chore, Completion } from '../lib/types'
 import { useGame } from '../store'
 
@@ -26,6 +26,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
   const sortedChores = [...chores].sort((a, b) => (usage.get(b.id) ?? 0) - (usage.get(a.id) ?? 0))
 
   const [logging, setLogging] = useState<Chore | null>(null)
+  const [oneOff, setOneOff] = useState(false)
   const [rejecting, setRejecting] = useState<Completion | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
@@ -127,7 +128,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
               <li key={c.id} className="row review-row">
                 <span className="row-emoji">{c.chore_emoji}</span>
                 <div className="row-main">
-                  <strong>{c.chore_name}{c.half && <HalfTag />}</strong>
+                  <strong>{c.chore_name}<CompletionTags c={c} /></strong>
                   <small>{member(c.user_id)?.emoji} {member(c.user_id)?.display_name} · {relativeDay(c.done_at)} · {timeAgo(c.created_at)}</small>
                   {c.note && <small className="note">“{c.note}”</small>}
                 </div>
@@ -152,7 +153,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
             {mine.map((c) => (
               <li key={c.id} className="row">
                 <span className="row-emoji">{c.chore_emoji}</span>
-                <div className="row-main"><strong>{c.chore_name}{c.half && <HalfTag />}</strong><small>{relativeDay(c.done_at)} · ⏳ in attesa</small></div>
+                <div className="row-main"><strong>{c.chore_name}<CompletionTags c={c} /></strong><small>{relativeDay(c.done_at)} · ⏳ in attesa</small></div>
                 <span className="pts muted">+{formatPts(c.points)}</span>
                 <button className="icon-btn" onClick={() => confirm('Annullare questa faccenda?') && run(() => backend.deleteCompletion(c.id), 'Annullata')} aria-label="Annulla">🗑️</button>
               </li>
@@ -166,20 +167,25 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
           <h2>Ho appena fatto…</h2>
           <button className="link" onClick={() => go('faccende')}>Gestisci</button>
         </div>
-        {chores.length === 0 ? <Empty emoji="🧹">Nessuna faccenda. Creane una!</Empty> : (
-          <div className="chore-grid">
-            {sortedChores.map((c) => (
-              <button key={c.id} className="chore-tile" onClick={() => { haptic(8); setLogging(c) }}>
-                <span className="tile-emoji">{c.emoji}</span>
-                <span className="tile-name">{c.name}</span>
-                <span className="tile-pts">{formatPts(c.points)} pt</span>
-              </button>
-            ))}
-          </div>
-        )}
+        {chores.length === 0 && <Empty emoji="🧹">Nessuna faccenda. Creane una!</Empty>}
+        <div className="chore-grid">
+          {sortedChores.map((c) => (
+            <button key={c.id} className="chore-tile" onClick={() => { haptic(8); setLogging(c) }}>
+              <span className="tile-emoji">{c.emoji}</span>
+              <span className="tile-name">{c.name}</span>
+              <span className="tile-pts">{formatPts(c.points)} pt</span>
+            </button>
+          ))}
+          <button className="chore-tile one-off-tile" onClick={() => { haptic(8); setOneOff(true) }}>
+            <span className="tile-emoji">✨</span>
+            <span className="tile-name">Una tantum</span>
+            <span className="tile-pts">non si salva</span>
+          </button>
+        </div>
       </section>
 
       <LogSheet chore={logging} onClose={() => setLogging(null)} />
+      <OneOffSheet open={oneOff} onClose={() => setOneOff(false)} />
       <RejectSheet completion={rejecting} onClose={() => setRejecting(null)} onReject={(c, note) => { setRejecting(null); review(c, false, note) }} />
     </div>
   )
@@ -202,6 +208,26 @@ function shareCode(code: string, toast: (t: string, tone?: 'ok') => void) {
   else navigator.clipboard?.writeText(code).then(() => toast('Codice copiato!', 'ok'))
 }
 
+const WHEN = ['Oggi', 'Ieri', '2 giorni fa', '3 giorni fa']
+
+/** Oggi = adesso; i giorni prima alle 20 */
+function doneAtFor(daysAgo: number) {
+  const d = new Date()
+  if (daysAgo) { d.setDate(d.getDate() - daysAgo); d.setHours(20, 0, 0, 0) }
+  return d
+}
+
+function WhenChips({ value, onChange }: { value: number; onChange: (daysAgo: number) => void }) {
+  return (
+    <>
+      <div className="field-label">Quando?</div>
+      <div className="chips">
+        {WHEN.map((l, i) => <button key={l} type="button" className={value === i ? 'on' : ''} onClick={() => onChange(i)}>{l}</button>)}
+      </div>
+    </>
+  )
+}
+
 function LogSheet({ chore, onClose }: { chore: Chore | null; onClose: () => void }) {
   const { backend, run, me, partner } = useGame()
   const [when, setWhen] = useState(0)
@@ -213,10 +239,8 @@ function LogSheet({ chore, onClose }: { chore: Chore | null; onClose: () => void
   async function submit(e: MouseEvent) {
     if (!chore) return
     setBusy(true)
-    const doneAt = new Date()
-    if (when) { doneAt.setDate(doneAt.getDate() - when); doneAt.setHours(20, 0, 0, 0) }
     const { clientX, clientY } = e
-    const c = await run(() => backend.logCompletion(chore.id, { note, doneAt, half }),
+    const c = await run(() => backend.logCompletion(chore.id, { note, doneAt: doneAtFor(when), half }),
       partner ? `Inviata a ${partner.display_name} per la validazione ⏳` : 'Registrata ⏳')
     setBusy(false)
     if (c) {
@@ -237,12 +261,7 @@ function LogSheet({ chore, onClose }: { chore: Chore | null; onClose: () => void
             <strong>{chore.name}</strong>
             <em style={{ color: me.color }}>+{formatPts(points)} punti{half && ' · metà'}</em>
           </div>
-          <div className="field-label">Quando?</div>
-          <div className="chips">
-            {['Oggi', 'Ieri', '2 giorni fa', '3 giorni fa'].map((l, i) => (
-              <button key={l} type="button" className={when === i ? 'on' : ''} onClick={() => setWhen(i)}>{l}</button>
-            ))}
-          </div>
+          <WhenChips value={when} onChange={setWhen} />
           <div className="field-label">Quanto?</div>
           <div className="chips">
             <button type="button" className={!half ? 'on' : ''} onClick={() => setHalf(false)}>Tutta · {formatPts(chore.points)} pt</button>
@@ -256,6 +275,65 @@ function LogSheet({ chore, onClose }: { chore: Chore | null; onClose: () => void
   )
 }
 
+const ONE_OFF_EMOJIS = ['✨', ...CHORE_EMOJIS]
+
+function OneOffSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Sheet open={open} onClose={onClose} title="Faccenda una tantum">
+      <OneOffForm onClose={onClose} />
+    </Sheet>
+  )
+}
+
+/** Una faccenda che capita una volta sola: si valida come le altre ma non finisce tra quelle salvate */
+function OneOffForm({ onClose }: { onClose: () => void }) {
+  const { backend, run, me, partner } = useGame()
+  const [name, setName] = useState('')
+  const [emoji, setEmoji] = useState('✨')
+  const [pointsText, setPointsText] = useState('1')
+  const [when, setWhen] = useState(0)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const points = parsePoints(pointsText)
+  const valid = !Number.isNaN(points) && name.trim() !== ''
+
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!valid || busy) return
+    setBusy(true)
+    // il tocco sul pulsante: da lì partono i punti che volano
+    const btn = (e.nativeEvent as SubmitEvent).submitter?.getBoundingClientRect()
+    const c = await run(() => backend.logOneOff({ name: name.trim(), emoji, points }, { note, doneAt: doneAtFor(when) }),
+      partner ? `Inviata a ${partner.display_name} per la validazione ⏳` : 'Registrata ⏳')
+    setBusy(false)
+    if (c) {
+      haptic([10, 30, 10])
+      if (btn) floatPoints(`+${formatPts(points)}`, btn.left + btn.width / 2, btn.top, me.color)
+      backend.notify({ type: 'completion_created', completion_id: c.id })
+      onClose()
+    }
+  }
+
+  return (
+    <form className="form" onSubmit={submit}>
+      <div className="log-hero">
+        <span>{emoji}</span>
+        <strong>{name.trim() || 'Faccenda una tantum'}</strong>
+        <em style={{ color: me.color }}>{Number.isNaN(points) ? 'Valore non valido' : `+${formatPts(points)} punti`}</em>
+      </div>
+      <p className="muted">Vale solo questa volta: non finisce tra le faccende salvate. {partner?.display_name ?? 'L\'altro'} la valida come sempre.</p>
+      <label>Cosa hai fatto?<input required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} placeholder="Es. Pulire le grondaie" autoFocus /></label>
+      <div className="field-label">Valore</div>
+      <PointsField text={pointsText} onChange={setPointsText} />
+      <WhenChips value={when} onChange={setWhen} />
+      <label>Nota (facoltativa)<input maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Es. c'era un nido 🐦" /></label>
+      <div className="field-label">Icona</div>
+      <EmojiGrid options={ONE_OFF_EMOJIS} value={emoji} onChange={setEmoji} />
+      <button className="btn primary big" disabled={!valid || busy}>✓ Fatto! Manda a {partner?.display_name ?? 'validare'}</button>
+    </form>
+  )
+}
+
 function RejectSheet({ completion, onClose, onReject }: { completion: Completion | null; onClose: () => void; onReject: (c: Completion, note: string) => void }) {
   const [note, setNote] = useState('')
   const quick = ['Non mi risulta 🤨', 'Fatta a metà', 'Già segnata', 'Da rifare 😅']
@@ -263,7 +341,7 @@ function RejectSheet({ completion, onClose, onReject }: { completion: Completion
     <Sheet open={!!completion} onClose={onClose} title="Rifiuta faccenda">
       {completion && (
         <div className="form">
-          <p className="muted">{completion.chore_emoji} {completion.chore_name}{completion.half && <HalfTag />} · +{formatPts(completion.points)} pt</p>
+          <p className="muted">{completion.chore_emoji} {completion.chore_name}<CompletionTags c={completion} /> · +{formatPts(completion.points)} pt</p>
           <div className="chips">
             {quick.map((q) => <button key={q} type="button" className={note === q ? 'on' : ''} onClick={() => setNote(q)}>{q}</button>)}
           </div>

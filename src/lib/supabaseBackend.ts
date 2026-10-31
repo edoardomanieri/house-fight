@@ -150,6 +150,18 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       fail(error)
       return withPoints(data as Completion)
     },
+    async logOneOff({ name, emoji, points }, { note, doneAt }) {
+      // senza chore_id il trigger la tratta come una tantum: controlla nome e punti e mette one_off
+      const { data, error } = await sb.from('completions').insert({
+        chore_id: null,
+        household_id: await myHouseholdId(),
+        chore_name: name, chore_emoji: emoji, points, half: false,
+        note: note || null,
+        done_at: (doneAt ?? new Date()).toISOString(),
+      }).select().single()
+      fail(error)
+      return withPoints(data as Completion)
+    },
     async reviewCompletion(id, approve, note) {
       const { data, error } = await sb.from('completions')
         .update({ status: approve ? 'approved' : 'rejected', review_note: note || null })
