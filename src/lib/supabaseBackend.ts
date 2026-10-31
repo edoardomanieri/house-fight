@@ -25,13 +25,16 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     return data.household_id as string
   }
 
+  // numeric di Postgres può arrivare come stringa
+  const withPoints = <T extends { points: unknown }>(x: T) => ({ ...x, points: Number(x.points) })
+
   async function allCompletions(hid: string) {
     const out: Completion[] = []
     for (let from = 0; ; from += PAGE) {
       const { data, error } = await sb.from('completions').select('*').eq('household_id', hid)
         .order('done_at', { ascending: false }).range(from, from + PAGE - 1)
       fail(error)
-      out.push(...(data as Completion[]))
+      out.push(...(data as Completion[]).map(withPoints))
       if (!data || data.length < PAGE) return out
     }
   }
@@ -71,10 +74,9 @@ export function createSupabaseBackend(url: string, key: string): Backend {
         allCompletions(hid),
       ])
       fail(h.error); fail(m.error); fail(c.error); fail(d.error)
-      // numeric di Postgres può arrivare come stringa
       const household = { ...h.data, dinner_rate: Number(h.data.dinner_rate) }
       const dinners = d.data!.map((x) => ({ ...x, amount: x.amount == null ? null : Number(x.amount) }))
-      return { household, members: m.data!, chores: c.data!, dinners, completions: comps }
+      return { household, members: m.data!, chores: c.data!.map(withPoints), dinners, completions: comps }
     },
 
     subscribe(hid, onChange) {
@@ -87,9 +89,9 @@ export function createSupabaseBackend(url: string, key: string): Backend {
         () => onChange({ kind: 'other' }))
       ch.on('postgres_changes', { event: '*', schema: 'public', table: 'completions', filter }, (p) => {
         let e: ChangeEvent = { kind: 'other' }
-        if (p.eventType === 'INSERT') e = { kind: 'completion_created', completion: p.new as Completion }
+        if (p.eventType === 'INSERT') e = { kind: 'completion_created', completion: withPoints(p.new as Completion) }
         else if (p.eventType === 'UPDATE' && (p.new as Completion).status !== 'pending')
-          e = { kind: 'completion_reviewed', completion: p.new as Completion }
+          e = { kind: 'completion_reviewed', completion: withPoints(p.new as Completion) }
         onChange(e)
       })
       ch.subscribe()
@@ -146,14 +148,14 @@ export function createSupabaseBackend(url: string, key: string): Backend {
         done_at: (doneAt ?? new Date()).toISOString(),
       }).select().single()
       fail(error)
-      return data as Completion
+      return withPoints(data as Completion)
     },
     async reviewCompletion(id, approve, note) {
       const { data, error } = await sb.from('completions')
         .update({ status: approve ? 'approved' : 'rejected', review_note: note || null })
         .eq('id', id).select().single()
       fail(error)
-      return data as Completion
+      return withPoints(data as Completion)
     },
     async deleteCompletion(id) {
       const { error } = await sb.from('completions').delete().eq('id', id)

@@ -2,7 +2,7 @@ import { useMemo, useState, type MouseEvent } from 'react'
 import { Avatar, Empty, Sheet } from '../components/ui'
 import { daysLeftInMonth, monthKey, monthLabel, shiftMonth, timeAgo, relativeDay } from '../lib/dates'
 import { confetti, floatPoints, haptic } from '../lib/fx'
-import { approved, currentStreak, dinnerValue, formatEur, inMonth, monthResult, totals } from '../lib/stats'
+import { addPts, approved, currentStreak, dinnerValue, formatEur, formatPts, inMonth, monthResult, totals } from '../lib/stats'
 import type { Chore, Completion } from '../lib/types'
 import { useGame } from '../store'
 
@@ -44,8 +44,8 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
     setBusy(null)
     if (r) {
       backend.notify({ type: 'completion_reviewed', completion_id: c.id })
-      if (ok && ev) floatPoints(`+${c.points}`, ev.clientX, ev.clientY, member(c.user_id)?.color ?? '#888')
-      toast(ok ? `Validata: +${c.points} a ${member(c.user_id)?.display_name}` : 'Faccenda rifiutata', ok ? 'ok' : 'info')
+      if (ok && ev) floatPoints(`+${formatPts(c.points)}`, ev.clientX, ev.clientY, member(c.user_id)?.color ?? '#888')
+      toast(ok ? `Validata: +${formatPts(c.points)} a ${member(c.user_id)?.display_name}` : 'Faccenda rifiutata', ok ? 'ok' : 'info')
     }
   }
 
@@ -57,7 +57,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
 
   const leader = partner && score[me.user_id] !== score[partner.user_id]
     ? (score[me.user_id] > score[partner.user_id] ? me : partner) : null
-  const gap = partner ? Math.abs(score[me.user_id] - score[partner.user_id]) : 0
+  const gap = partner ? Math.abs(addPts(score[me.user_id], -score[partner.user_id])) : 0
   const stake = dinnerValue(gap, data.household.dinner_rate)
   const left = daysLeftInMonth()
 
@@ -70,7 +70,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
             <div key={m.user_id} className={`sb-player ${leader?.user_id === m.user_id ? 'lead' : ''}`}>
               <Avatar m={m} size={56} />
               <div className="sb-name">{m.display_name}{leader?.user_id === m.user_id && ' 👑'}</div>
-              <div className="sb-points" style={{ color: m.color }}>{score[m.user_id]}</div>
+              <div className="sb-points" style={{ color: m.color }}>{formatPts(score[m.user_id])}</div>
               {pending[m.user_id] > 0 && <div className="sb-pending">+{pending[m.user_id]} in attesa</div>}
               {currentStreak(data.completions, m.user_id) > 1 && <div className="sb-streak">🔥 {currentStreak(data.completions, m.user_id)} giorni</div>}
             </div>
@@ -82,7 +82,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
         <p className="sb-caption">
           {!partner ? 'Invita il tuo avversario per iniziare la sfida'
             : !leader ? (score[me.user_id] ? 'Parità perfetta. Chi farà la prossima mossa? 🤺' : 'Il mese è appena iniziato: fai la prima mossa! 💪')
-            : leader.user_id === me.user_id ? `Sei avanti di ${gap} punti 😎` : `${partner.display_name} è avanti di ${gap} punti: rimonta! 💪`}
+            : leader.user_id === me.user_id ? `Sei avanti di ${formatPts(gap)} punti 😎` : `${partner.display_name} è avanti di ${formatPts(gap)} punti: rimonta! 💪`}
         </p>
         {leader && stake > 0 && (
           <div className="stake">
@@ -106,7 +106,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
             <strong>{monthLabel(r.month)}</strong>
             {r.winner && r.loser ? (
               <span>
-                Vince {r.winner.emoji} <b>{r.winner.display_name}</b> di {r.margin} punti ({r.totals[r.winner.user_id]} a {r.totals[r.loser.user_id]}):{' '}
+                Vince {r.winner.emoji} <b>{r.winner.display_name}</b> di {formatPts(r.margin)} punti ({formatPts(r.totals[r.winner.user_id])} a {formatPts(r.totals[r.loser.user_id])}):{' '}
                 {r.loser.user_id === me.user_id ? 'tocca a te offrire una cena da ' : `${r.loser.display_name} ti offre una cena da `}
                 <b className="eur">{formatEur(r.amount)}</b>
               </span>
@@ -131,7 +131,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
                   <small>{member(c.user_id)?.emoji} {member(c.user_id)?.display_name} · {relativeDay(c.done_at)} · {timeAgo(c.created_at)}</small>
                   {c.note && <small className="note">“{c.note}”</small>}
                 </div>
-                <span className="pts">+{c.points}</span>
+                <span className="pts">+{formatPts(c.points)}</span>
                 <div className="row-actions">
                   <button className="round bad" disabled={busy === c.id} onClick={() => setRejecting(c)} aria-label="Rifiuta">✕</button>
                   <button className="round ok" disabled={busy === c.id} onClick={(e) => review(c, true, undefined, e)} aria-label="Valida">✓</button>
@@ -153,7 +153,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
               <li key={c.id} className="row">
                 <span className="row-emoji">{c.chore_emoji}</span>
                 <div className="row-main"><strong>{c.chore_name}</strong><small>{relativeDay(c.done_at)} · ⏳ in attesa</small></div>
-                <span className="pts muted">+{c.points}</span>
+                <span className="pts muted">+{formatPts(c.points)}</span>
                 <button className="icon-btn" onClick={() => confirm('Annullare questa faccenda?') && run(() => backend.deleteCompletion(c.id), 'Annullata')} aria-label="Annulla">🗑️</button>
               </li>
             ))}
@@ -172,7 +172,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
               <button key={c.id} className="chore-tile" onClick={() => { haptic(8); setLogging(c) }}>
                 <span className="tile-emoji">{c.emoji}</span>
                 <span className="tile-name">{c.name}</span>
-                <span className="tile-pts">{c.points} pt</span>
+                <span className="tile-pts">{formatPts(c.points)} pt</span>
               </button>
             ))}
           </div>
@@ -219,7 +219,7 @@ function LogSheet({ chore, onClose }: { chore: Chore | null; onClose: () => void
     setBusy(false)
     if (c) {
       haptic([10, 30, 10])
-      floatPoints(`+${chore.points}`, clientX, clientY, me.color)
+      floatPoints(`+${formatPts(chore.points)}`, clientX, clientY, me.color)
       backend.notify({ type: 'completion_created', completion_id: c.id })
       setNote(''); setWhen(0)
       onClose()
@@ -233,7 +233,7 @@ function LogSheet({ chore, onClose }: { chore: Chore | null; onClose: () => void
           <div className="log-hero">
             <span>{chore.emoji}</span>
             <strong>{chore.name}</strong>
-            <em style={{ color: me.color }}>+{chore.points} punti</em>
+            <em style={{ color: me.color }}>+{formatPts(chore.points)} punti</em>
           </div>
           <div className="field-label">Quando?</div>
           <div className="chips">
@@ -256,7 +256,7 @@ function RejectSheet({ completion, onClose, onReject }: { completion: Completion
     <Sheet open={!!completion} onClose={onClose} title="Rifiuta faccenda">
       {completion && (
         <div className="form">
-          <p className="muted">{completion.chore_emoji} {completion.chore_name} · +{completion.points} pt</p>
+          <p className="muted">{completion.chore_emoji} {completion.chore_name} · +{formatPts(completion.points)} pt</p>
           <div className="chips">
             {quick.map((q) => <button key={q} type="button" className={note === q ? 'on' : ''} onClick={() => setNote(q)}>{q}</button>)}
           </div>

@@ -4,7 +4,7 @@ import { currentPushSubscription, disableNotifications, enableNotifications, isI
 import { dinnerValue, formatEur } from '../lib/stats'
 import { useGame } from '../store'
 
-const RATES = [0.25, 0.5, 1, 2]
+const RATES = [1, 2, 3, 5]
 
 export function SettingsScreen() {
   const { data, me, partner, backend, run, toast } = useGame()
@@ -87,7 +87,7 @@ export function SettingsScreen() {
         </div>
         <label>€ per punto di distacco<input inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} /></label>
         {rateValid && (
-          <p className="hint">Esempio: 40 punti di distacco → cena da <b>{formatEur(dinnerValue(40, rateNum))}</b></p>
+          <p className="hint">Esempio: 10 punti di distacco → cena da <b>{formatEur(dinnerValue(10, rateNum))}</b></p>
         )}
         {rateValid && rateNum !== data.household.dinner_rate && (
           <button className="btn primary" onClick={() => run(() => backend.setDinnerRate(rateNum), 'Moltiplicatore aggiornato')}>Salva moltiplicatore</button>

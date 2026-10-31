@@ -3,6 +3,13 @@ import type { Completion, Member } from './types'
 
 export type Totals = Record<string, number>
 
+/** Somma senza gli errori dei decimali in virgola mobile (0,1 + 0,2) */
+export const addPts = (a: number, b: number) => Math.round((a + b) * 100) / 100
+
+const pts = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 2 })
+/** 10 oppure 2,5 */
+export const formatPts = (v: number) => pts.format(v)
+
 export const approved = (cs: Completion[]) => cs.filter((c) => c.status === 'approved')
 
 export function inMonth(cs: Completion[], key: string) {
@@ -15,7 +22,7 @@ export function inYear(cs: Completion[], year: number) {
 
 export function totals(cs: Completion[], members: Member[]): Totals {
   const t: Totals = Object.fromEntries(members.map((m) => [m.user_id, 0]))
-  for (const c of cs) t[c.user_id] = (t[c.user_id] ?? 0) + c.points
+  for (const c of cs) t[c.user_id] = addPts(t[c.user_id] ?? 0, c.points)
   return t
 }
 
@@ -42,7 +49,7 @@ export function monthResult(all: Completion[], members: Member[], month: string,
   const t = totals(approved(inMonth(all, month)), members)
   const [a, b] = [...members].sort((x, y) => t[y.user_id] - t[x.user_id])
   if (!a || !b || t[a.user_id] === t[b.user_id]) return { month, totals: t, winner: null, loser: null, margin: 0, amount: 0 }
-  const margin = t[a.user_id] - t[b.user_id]
+  const margin = addPts(t[a.user_id], -t[b.user_id])
   return { month, totals: t, winner: a, loser: b, margin, amount: dinnerValue(margin, rate) }
 }
 
@@ -58,7 +65,7 @@ export function cumulativeByDay(cs: Completion[], members: Member[], month: stri
   const perDay: Record<string, number[]> = Object.fromEntries(members.map((x) => [x.user_id, Array(n).fill(0)]))
   for (const c of approved(inMonth(cs, month))) {
     const d = new Date(c.done_at).getDate() - 1
-    if (perDay[c.user_id]) perDay[c.user_id][d] += c.points
+    if (perDay[c.user_id]) perDay[c.user_id][d] = addPts(perDay[c.user_id][d], c.points)
   }
   const today = new Date()
   const isCurrent = today.getFullYear() === year && today.getMonth() === m
@@ -67,7 +74,7 @@ export function cumulativeByDay(cs: Completion[], members: Member[], month: stri
   const out: Record<string, number[]> = {}
   for (const id of Object.keys(perDay)) {
     let acc = 0
-    out[id] = perDay[id].slice(0, lastDay).map((v) => (acc += v))
+    out[id] = perDay[id].slice(0, lastDay).map((v) => (acc = addPts(acc, v)))
   }
   return { days: n, lastDay, series: out }
 }
@@ -77,7 +84,7 @@ export function byMonth(cs: Completion[], members: Member[], year: number) {
   const rows = Array.from({ length: 12 }, (_, i) => ({ month: i, totals: totals([], members) }))
   for (const c of approved(inYear(cs, year))) {
     const m = new Date(c.done_at).getMonth()
-    rows[m].totals[c.user_id] = (rows[m].totals[c.user_id] ?? 0) + c.points
+    rows[m].totals[c.user_id] = addPts(rows[m].totals[c.user_id] ?? 0, c.points)
   }
   return rows
 }
@@ -101,8 +108,8 @@ export function byChore(cs: Completion[], members: Member[]): ChoreStat[] {
       map.set(key, s)
     }
     s.count[c.user_id] = (s.count[c.user_id] ?? 0) + 1
-    s.points[c.user_id] = (s.points[c.user_id] ?? 0) + c.points
-    s.total += c.points
+    s.points[c.user_id] = addPts(s.points[c.user_id] ?? 0, c.points)
+    s.total = addPts(s.total, c.points)
   }
   return [...map.values()].sort((a, b) => b.total - a.total)
 }
