@@ -168,6 +168,7 @@ main { padding: 0 16px calc(var(--tabbar) + 28px + env(safe-area-inset-bottom));
 .chip-pending { background: var(--warn-bg); color: var(--warn); }
 .chip-approved { background: var(--ok-bg); color: var(--ok); }
 .chip-rejected { background: var(--bad-bg); color: var(--bad); }
+.chip-half { background: var(--surface-2); color: var(--muted); margin-left: 6px; vertical-align: 2px; }
 
 .empty { text-align: center; padding: 22px 12px; color: var(--muted); border: 1.5px dashed var(--line); border-radius: var(--radius); }
 .empty span { font-size: 2rem; display: block; margin-bottom: 6px; }

@@ -34,6 +34,8 @@ export interface Completion {
   chore_name: string
   chore_emoji: string
   points: number
+  /** Fatta a metà: vale metà dei punti della faccenda */
+  half: boolean
   user_id: string
   done_at: string
   note: string | null
@@ -97,7 +99,7 @@ export interface Backend {
   saveChore(chore: { id?: string; name: string; emoji: string; points: number }): Promise<void>
   setChoreArchived(id: string, archived: boolean): Promise<void>
 
-  logCompletion(choreId: string, opts: { note?: string; doneAt?: Date }): Promise<Completion>
+  logCompletion(choreId: string, opts: { note?: string; doneAt?: Date; half?: boolean }): Promise<Completion>
   reviewCompletion(id: string, approve: boolean, note?: string): Promise<Completion>
   deleteCompletion(id: string): Promise<void>
   setDinnerPaid(month: string, paid: boolean, amount?: number): Promise<void>

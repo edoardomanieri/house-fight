@@ -12,7 +12,8 @@ funziona anche offline per la consultazione e manda **notifiche push**.
 - **Sfida del mese**: punteggio in tempo reale, barra del tiro alla fune, chi è in testa, serie di giorni consecutivi 🔥
 - **Faccende**: crea, modifica, archivia; ogni faccenda ha emoji e valore in punti
   (cambiare il valore non tocca i punti già guadagnati)
-- **Segna "fatta"** con un tocco, anche per ieri o per qualche giorno fa, con una nota facoltativa
+- **Segna "fatta"** con un tocco, anche per ieri o per qualche giorno fa, con una nota facoltativa;
+  se l'hai fatta solo in parte (es. stirato pochi panni) scegli **½ Metà** e vale metà dei punti
 - **Validazione**: i punti contano solo dopo che l'altro ha premuto ✓ (oppure ✕ spiegando il motivo).
   Il database impedisce di validare le proprie faccende o di cambiarne i punti.
 - **🔔 Stuzzica**: ricorda al partner che hai faccende in attesa
@@ -44,7 +45,7 @@ Serve: un progetto [Supabase](https://supabase.com) (piano Free) e [Vercel](http
 1. Crea un progetto su Supabase.
 2. **SQL Editor** → incolla ed esegui `supabase/migrations/0001_init.sql`, poi `0002_grants.sql`
    (i permessi delle API: senza, l'app dà "permission denied for table") e `0003_decimal_points.sql`
-   (punti con la virgola), infine `0004_points_scale.sql` (scala da 0,5 a 7 punti).
+   (punti con la virgola), poi `0004_points_scale.sql` (scala da 0,5 a 7 punti) e `0005_half_completions.sql` (faccende fatte a metà).
 3. **Authentication → Sign In / Providers → Email**: per semplicità puoi disattivare
    *Confirm email* (altrimenti imposta in **Authentication → URL Configuration** come *Site URL*
    l'indirizzo dell'app).
@@ -103,5 +104,6 @@ supabase/
   migrations/0002_grants.sql permessi delle tabelle per i ruoli delle API
   migrations/0003_decimal_points.sql punti con la virgola
   migrations/0004_points_scale.sql   scala dei punti (max 7) e faccende di partenza
+  migrations/0005_half_completions.sql faccende fatte a metà
   functions/notify/         Edge Function che invia le notifiche push
 ```

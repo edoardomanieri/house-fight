@@ -138,12 +138,12 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       fail(error)
     },
 
-    async logCompletion(choreId, { note, doneAt }) {
-      // household_id, nome e punti vengono impostati dal trigger sul database
+    async logCompletion(choreId, { note, doneAt, half }) {
+      // household_id, nome e punti (dimezzati se half) vengono impostati dal trigger sul database
       const { data, error } = await sb.from('completions').insert({
         chore_id: choreId,
         household_id: await myHouseholdId(),
-        chore_name: '', chore_emoji: '', points: 0,
+        chore_name: '', chore_emoji: '', points: 0, half: !!half,
         note: note || null,
         done_at: (doneAt ?? new Date()).toISOString(),
       }).select().single()

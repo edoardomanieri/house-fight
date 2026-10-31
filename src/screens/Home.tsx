@@ -1,5 +1,5 @@
 import { useMemo, useState, type MouseEvent } from 'react'
-import { Avatar, Empty, Sheet } from '../components/ui'
+import { Avatar, Empty, HalfTag, Sheet } from '../components/ui'
 import { daysLeftInMonth, monthKey, monthLabel, shiftMonth, timeAgo, relativeDay } from '../lib/dates'
 import { confetti, floatPoints, haptic } from '../lib/fx'
 import { addPts, approved, currentStreak, dinnerValue, formatEur, formatPts, inMonth, monthResult, totals } from '../lib/stats'
@@ -127,7 +127,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
               <li key={c.id} className="row review-row">
                 <span className="row-emoji">{c.chore_emoji}</span>
                 <div className="row-main">
-                  <strong>{c.chore_name}</strong>
+                  <strong>{c.chore_name}{c.half && <HalfTag />}</strong>
                   <small>{member(c.user_id)?.emoji} {member(c.user_id)?.display_name} · {relativeDay(c.done_at)} · {timeAgo(c.created_at)}</small>
                   {c.note && <small className="note">“{c.note}”</small>}
                 </div>
@@ -152,7 +152,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
             {mine.map((c) => (
               <li key={c.id} className="row">
                 <span className="row-emoji">{c.chore_emoji}</span>
-                <div className="row-main"><strong>{c.chore_name}</strong><small>{relativeDay(c.done_at)} · ⏳ in attesa</small></div>
+                <div className="row-main"><strong>{c.chore_name}{c.half && <HalfTag />}</strong><small>{relativeDay(c.done_at)} · ⏳ in attesa</small></div>
                 <span className="pts muted">+{formatPts(c.points)}</span>
                 <button className="icon-btn" onClick={() => confirm('Annullare questa faccenda?') && run(() => backend.deleteCompletion(c.id), 'Annullata')} aria-label="Annulla">🗑️</button>
               </li>
@@ -206,7 +206,9 @@ function LogSheet({ chore, onClose }: { chore: Chore | null; onClose: () => void
   const { backend, run, me, partner } = useGame()
   const [when, setWhen] = useState(0)
   const [note, setNote] = useState('')
+  const [half, setHalf] = useState(false)
   const [busy, setBusy] = useState(false)
+  const points = chore ? (half ? Math.round(chore.points * 50) / 100 : chore.points) : 0
 
   async function submit(e: MouseEvent) {
     if (!chore) return
@@ -214,14 +216,14 @@ function LogSheet({ chore, onClose }: { chore: Chore | null; onClose: () => void
     const doneAt = new Date()
     if (when) { doneAt.setDate(doneAt.getDate() - when); doneAt.setHours(20, 0, 0, 0) }
     const { clientX, clientY } = e
-    const c = await run(() => backend.logCompletion(chore.id, { note, doneAt }),
+    const c = await run(() => backend.logCompletion(chore.id, { note, doneAt, half }),
       partner ? `Inviata a ${partner.display_name} per la validazione ⏳` : 'Registrata ⏳')
     setBusy(false)
     if (c) {
       haptic([10, 30, 10])
-      floatPoints(`+${formatPts(chore.points)}`, clientX, clientY, me.color)
+      floatPoints(`+${formatPts(points)}`, clientX, clientY, me.color)
       backend.notify({ type: 'completion_created', completion_id: c.id })
-      setNote(''); setWhen(0)
+      setNote(''); setWhen(0); setHalf(false)
       onClose()
     }
   }
@@ -233,7 +235,7 @@ function LogSheet({ chore, onClose }: { chore: Chore | null; onClose: () => void
           <div className="log-hero">
             <span>{chore.emoji}</span>
             <strong>{chore.name}</strong>
-            <em style={{ color: me.color }}>+{formatPts(chore.points)} punti</em>
+            <em style={{ color: me.color }}>+{formatPts(points)} punti{half && ' · metà'}</em>
           </div>
           <div className="field-label">Quando?</div>
           <div className="chips">
@@ -241,7 +243,12 @@ function LogSheet({ chore, onClose }: { chore: Chore | null; onClose: () => void
               <button key={l} type="button" className={when === i ? 'on' : ''} onClick={() => setWhen(i)}>{l}</button>
             ))}
           </div>
-          <label>Nota (facoltativa)<input maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Es. anche il forno!" /></label>
+          <div className="field-label">Quanto?</div>
+          <div className="chips">
+            <button type="button" className={!half ? 'on' : ''} onClick={() => setHalf(false)}>Tutta · {formatPts(chore.points)} pt</button>
+            <button type="button" className={half ? 'on' : ''} onClick={() => setHalf(true)}>½ Metà · {formatPts(Math.round(chore.points * 50) / 100)} pt</button>
+          </div>
+          <label>Nota (facoltativa)<input maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} placeholder={half ? 'Es. solo le camicie' : 'Es. anche il forno!'} /></label>
           <button className="btn primary big" disabled={busy} onClick={submit}>✓ Fatto! Manda a {partner?.display_name ?? 'validare'}</button>
         </div>
       )}
@@ -256,7 +263,7 @@ function RejectSheet({ completion, onClose, onReject }: { completion: Completion
     <Sheet open={!!completion} onClose={onClose} title="Rifiuta faccenda">
       {completion && (
         <div className="form">
-          <p className="muted">{completion.chore_emoji} {completion.chore_name} · +{formatPts(completion.points)} pt</p>
+          <p className="muted">{completion.chore_emoji} {completion.chore_name}{completion.half && <HalfTag />} · +{formatPts(completion.points)} pt</p>
           <div className="chips">
             {quick.map((q) => <button key={q} type="button" className={note === q ? 'on' : ''} onClick={() => setNote(q)}>{q}</button>)}
           </div>
