@@ -20,6 +20,9 @@ const DEFAULT_CHORES: [string, string, number][] = [
   ['Stirare', '🔥', 5], ['Buttare la spazzatura', '🗑️', 0.5], ['Cambiare le lenzuola', '🛏️', 2.5],
 ]
 
+/** Metà dei punti, al centesimo come sul database */
+const halfPoints = (p: number) => Math.round(p * 50) / 100
+
 function seed(): DB {
   const now = new Date()
   const chores: Chore[] = DEFAULT_CHORES.map(([name, emoji, points], i) => ({
@@ -49,7 +52,7 @@ function seed(): DB {
         const status = fresh ? 'pending' : rand() < 0.95 ? 'approved' : 'rejected'
         completions.push({
           id: uuid(), household_id: HID, chore_id: c.id, chore_name: c.name, chore_emoji: c.emoji,
-          points: c.points, user_id: u, done_at: when.toISOString(), note: null, status,
+          points: c.points, half: false, user_id: u, done_at: when.toISOString(), note: null, status,
           reviewed_by: status === 'pending' ? null : u === ME ? PARTNER : ME,
           reviewed_at: status === 'pending' ? null : when.toISOString(),
           review_note: status === 'rejected' ? 'Mmm… non mi risulta 🤨' : null,
@@ -59,11 +62,12 @@ function seed(): DB {
     }
   }
   // Un paio di faccende del partner ancora da validare, per provare subito il flusso
-  for (const [i, hoursAgo, note] of [[6, 2, 'Anche lo specchio ✨'], [7, 5, null]] as const) {
+  for (const [i, hoursAgo, note, half] of [[6, 2, 'Anche lo specchio ✨', false], [9, 5, 'Solo le camicie', true]] as const) {
     const c = chores[i]
     const when = new Date(now.getTime() - hoursAgo * 3600 * 1000).toISOString()
     completions.push({
-      id: uuid(), household_id: HID, chore_id: c.id, chore_name: c.name, chore_emoji: c.emoji, points: c.points,
+      id: uuid(), household_id: HID, chore_id: c.id, chore_name: c.name, chore_emoji: c.emoji,
+      points: half ? halfPoints(c.points) : c.points, half,
       user_id: PARTNER, done_at: when, note, status: 'pending', reviewed_by: null, reviewed_at: null, review_note: null, created_at: when,
     })
   }
@@ -142,12 +146,13 @@ export function createDemoBackend(): Backend {
     async setChoreArchived(id, archived) {
       mutate((db) => { db.chores = db.chores.map((c) => (c.id === id ? { ...c, archived } : c)) })
     },
-    async logCompletion(choreId, { note, doneAt }) {
+    async logCompletion(choreId, { note, doneAt, half }) {
       const db = read()
       const c = db.chores.find((x) => x.id === choreId)!
       const now = new Date().toISOString()
       const comp: Completion = {
-        id: uuid(), household_id: HID, chore_id: c.id, chore_name: c.name, chore_emoji: c.emoji, points: c.points,
+        id: uuid(), household_id: HID, chore_id: c.id, chore_name: c.name, chore_emoji: c.emoji,
+        points: half ? halfPoints(c.points) : c.points, half: !!half,
         user_id: currentUser(), done_at: (doneAt ?? new Date()).toISOString(), note: note || null, status: 'pending',
         reviewed_by: null, reviewed_at: null, review_note: null, created_at: now,
       }

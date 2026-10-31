@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Empty, PeriodNav, StatusChip } from '../components/ui'
+import { Empty, HalfTag, PeriodNav, StatusChip } from '../components/ui'
 import { dayKey, monthKey, monthLabel, relativeDay, shiftMonth, timeLabel } from '../lib/dates'
 import { addPts, formatPts, inMonth } from '../lib/stats'
 import type { Status } from '../lib/types'
@@ -61,7 +61,7 @@ export function HistoryScreen() {
                   <li key={c.id} className={`row ${c.status === 'rejected' ? 'faded' : ''}`}>
                     <span className="row-emoji">{c.chore_emoji}</span>
                     <div className="row-main">
-                      <strong>{c.chore_name}</strong>
+                      <strong>{c.chore_name}{c.half && <HalfTag />}</strong>
                       <small><span className="dot" style={{ background: m?.color }} />{m?.display_name} · {timeLabel(c.done_at)}</small>
                       {c.note && <small className="note">“{c.note}”</small>}
                       {c.review_note && <small className="note">↳ {member(c.reviewed_by)?.display_name}: “{c.review_note}”</small>}

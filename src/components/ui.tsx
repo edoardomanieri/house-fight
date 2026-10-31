@@ -84,6 +84,11 @@ export function Empty({ emoji, children }: { emoji: string; children: ReactNode 
   return <div className="empty"><span>{emoji}</span><p>{children}</p></div>
 }
 
+/** Faccenda fatta a metà: vale metà dei punti */
+export function HalfTag() {
+  return <span className="chip chip-half" title="Fatta a metà: metà dei punti">½ metà</span>
+}
+
 export function StatusChip({ status }: { status: 'pending' | 'approved' | 'rejected' }) {
   const map = { pending: ['⏳', 'In attesa'], approved: ['✓', 'Validata'], rejected: ['✕', 'Rifiutata'] } as const
   return <span className={`chip chip-${status}`}>{map[status][0]} {map[status][1]}</span>

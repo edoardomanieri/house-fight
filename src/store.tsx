@@ -104,7 +104,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const who = partner ? `${partner.emoji} ${partner.display_name}` : 'Il partner'
       if (e.kind === 'completion_created' && e.completion.user_id !== me.user_id) {
         const c = e.completion
-        const text = `${who} ha fatto ${c.chore_emoji} ${c.chore_name}: da validare!`
+        const text = `${who} ha fatto ${c.half ? 'metà di ' : ''}${c.chore_emoji} ${c.chore_name}: da validare!`
         toast(text, 'info'); haptic([20, 40, 20])
         if (document.hidden) showLocalNotification(`${who}: ${c.chore_emoji} ${c.chore_name}`, `+${formatPts(c.points)} punti in attesa della tua validazione ✅`, `c-${c.id}`)
       } else if (e.kind === 'completion_reviewed' && e.completion.user_id === me.user_id && e.completion.reviewed_by !== me.user_id) {

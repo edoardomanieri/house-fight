@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
     if (body.type === 'completion_created') {
       if (c.user_id !== user.id) return json({ error: 'forbidden' }, 403)
       const sent = await pushTo(others, {
-        title: `${me.emoji} ${me.display_name}: ${c.chore_emoji} ${c.chore_name}`,
+        title: `${me.emoji} ${me.display_name}: ${c.chore_emoji} ${c.chore_name}${c.half ? ' (metà)' : ''}`,
         body: `+${pts(Number(c.points))} punti in attesa della tua validazione ✅`,
         tag: `c-${c.id}`, url: './#/',
       })
