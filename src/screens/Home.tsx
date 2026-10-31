@@ -112,7 +112,7 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
               </span>
             ) : <span>Pareggio {r.totals[me.user_id]} a {partner ? r.totals[partner.user_id] : 0}: cena alla romana 🍝</span>}
           </div>
-          <button className="btn small" onClick={() => run(() => backend.setDinnerPaid(r.month, true, r.amount), 'Buon appetito! 🍷').then(() => confetti())}>Fatto ✓</button>
+          <button className="btn small" onClick={() => run(async () => { await backend.setDinnerPaid(r.month, true, r.amount); return true }, 'Buon appetito! 🍷').then((ok) => ok && confetti())}>Fatto ✓</button>
         </section>
       ))}
 
