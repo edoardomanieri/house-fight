@@ -2,7 +2,7 @@
 
 La sfida delle faccende di casa per due. Ogni faccenda vale dei punti, chi la fa la segna,
 **l'altro la deve validare**, e a fine mese chi perde offre una cena che vale
-**la differenza di punti × un moltiplicatore** (es. 0,50 € a punto).
+**la differenza di punti × un moltiplicatore** (es. 2 € a punto).
 
 È una **PWA**: si apre dal browser e si installa sulla schermata Home (iPhone e Android),
 funziona anche offline per la consultazione e manda **notifiche push**.
@@ -42,7 +42,9 @@ Serve: un progetto [Supabase](https://supabase.com) (piano Free) e [Vercel](http
 ### 1. Database
 
 1. Crea un progetto su Supabase.
-2. **SQL Editor** → incolla ed esegui `supabase/migrations/0001_init.sql`.
+2. **SQL Editor** → incolla ed esegui `supabase/migrations/0001_init.sql`, poi `0002_grants.sql`
+   (i permessi delle API: senza, l'app dà "permission denied for table") e `0003_decimal_points.sql`
+   (punti con la virgola), infine `0004_points_scale.sql` (scala da 0,5 a 7 punti).
 3. **Authentication → Sign In / Providers → Email**: per semplicità puoi disattivare
    *Confirm email* (altrimenti imposta in **Authentication → URL Configuration** come *Site URL*
    l'indirizzo dell'app).
@@ -98,5 +100,8 @@ src/
 public/sw.js                service worker (offline + push)
 supabase/
   migrations/0001_init.sql  tabelle, regole di sicurezza (RLS), trigger di validazione
+  migrations/0002_grants.sql permessi delle tabelle per i ruoli delle API
+  migrations/0003_decimal_points.sql punti con la virgola
+  migrations/0004_points_scale.sql   scala dei punti (max 7) e faccende di partenza
   functions/notify/         Edge Function che invia le notifiche push
 ```

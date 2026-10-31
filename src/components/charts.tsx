@@ -1,6 +1,6 @@
 import { useState, type PointerEvent } from 'react'
 import type { Member } from '../lib/types'
-import type { ChoreStat, Totals } from '../lib/stats'
+import { addPts, formatPts, type ChoreStat, type Totals } from '../lib/stats'
 
 const W = 340
 const niceMax = (v: number) => {
@@ -34,7 +34,7 @@ function TipRows({ members, values, suffix = 'pt' }: { members: Member[]; values
     <>
       {members.map((m) => (
         <div key={m.user_id} className="tip-row">
-          <i style={{ background: m.color }} />{m.display_name}<b>{values[m.user_id] ?? 0} {suffix}</b>
+          <i style={{ background: m.color }} />{m.display_name}<b>{formatPts(values[m.user_id] ?? 0)} {suffix}</b>
         </div>
       ))}
     </>
@@ -155,7 +155,7 @@ function roundTop(x: number, y: number, w: number, h: number) {
 
 /** Classifica faccende: barra divisa per giocatore */
 export function ChoreBars({ members, stats, metric }: { members: Member[]; stats: ChoreStat[]; metric: 'points' | 'count' }) {
-  const val = (s: ChoreStat) => members.reduce((a, m) => a + (s[metric][m.user_id] ?? 0), 0)
+  const val = (s: ChoreStat) => members.reduce((a, m) => addPts(a, s[metric][m.user_id] ?? 0), 0)
   const max = Math.max(1, ...stats.map(val))
   return (
     <div className="chore-bars">
@@ -163,7 +163,7 @@ export function ChoreBars({ members, stats, metric }: { members: Member[]; stats
         <div key={s.key} className="chore-bar">
           <div className="chore-bar-head">
             <span>{s.emoji} {s.name}</span>
-            <b>{val(s)}{metric === 'points' ? ' pt' : '×'}</b>
+            <b>{formatPts(val(s))}{metric === 'points' ? ' pt' : '×'}</b>
           </div>
           <div className="chore-bar-track">
             {members.map((m) => {
@@ -172,7 +172,7 @@ export function ChoreBars({ members, stats, metric }: { members: Member[]; stats
             })}
           </div>
           <div className="chore-bar-foot">
-            {members.map((m) => <span key={m.user_id}>{m.emoji} {s.count[m.user_id] ?? 0}× · {s.points[m.user_id] ?? 0} pt</span>)}
+            {members.map((m) => <span key={m.user_id}>{m.emoji} {s.count[m.user_id] ?? 0}× · {formatPts(s.points[m.user_id] ?? 0)} pt</span>)}
           </div>
         </div>
       ))}

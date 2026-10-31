@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { createDemoBackend } from './lib/demoBackend'
 import { confetti, haptic } from './lib/fx'
 import { setBadge, showLocalNotification } from './lib/notifications'
+import { formatPts } from './lib/stats'
 import { createSupabaseBackend } from './lib/supabaseBackend'
 import type { AppData, Backend, ChangeEvent, Member } from './lib/types'
 
@@ -105,13 +106,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const c = e.completion
         const text = `${who} ha fatto ${c.chore_emoji} ${c.chore_name}: da validare!`
         toast(text, 'info'); haptic([20, 40, 20])
-        if (document.hidden) showLocalNotification(`${who}: ${c.chore_emoji} ${c.chore_name}`, `+${c.points} punti in attesa della tua validazione ✅`, `c-${c.id}`)
+        if (document.hidden) showLocalNotification(`${who}: ${c.chore_emoji} ${c.chore_name}`, `+${formatPts(c.points)} punti in attesa della tua validazione ✅`, `c-${c.id}`)
       } else if (e.kind === 'completion_reviewed' && e.completion.user_id === me.user_id && e.completion.reviewed_by !== me.user_id) {
         const c = e.completion
         if (c.status === 'approved') {
-          toast(`✅ ${who} ha validato ${c.chore_name}: +${c.points}!`, 'ok')
+          toast(`✅ ${who} ha validato ${c.chore_name}: +${formatPts(c.points)}!`, 'ok')
           if (!document.hidden) confetti([me.color, '#eda100', '#1baf7a'])
-          else showLocalNotification(`✅ ${c.chore_name}: +${c.points} punti!`, `${who} ha validato la tua faccenda 💪`, `c-${c.id}`)
+          else showLocalNotification(`✅ ${c.chore_name}: +${formatPts(c.points)} punti!`, `${who} ha validato la tua faccenda 💪`, `c-${c.id}`)
         } else {
           toast(`❌ ${who} ha rifiutato ${c.chore_name}${c.review_note ? `: “${c.review_note}”` : ''}`, 'bad')
           if (document.hidden) showLocalNotification(`❌ ${c.chore_name} rifiutata`, c.review_note ?? '', `c-${c.id}`)

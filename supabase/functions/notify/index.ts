@@ -32,6 +32,9 @@ type Member = { user_id: string; household_id: string; display_name: string; emo
 const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto',
   'settembre', 'ottobre', 'novembre', 'dicembre']
 
+/** Punti all'italiana: 10 oppure 2,5 */
+const pts = (v: number) => new Intl.NumberFormat('it-IT', { maximumFractionDigits: 2 }).format(v)
+
 async function pushTo(userIds: string[], payload: Payload) {
   if (!userIds.length) return 0
   const { data: subs } = await admin.from('push_subscriptions').select('*').in('user_id', userIds)
@@ -80,7 +83,7 @@ async function monthly() {
       .eq('household_id', h.id).eq('status', 'approved')
       .gte('done_at', start.toISOString()).lt('done_at', end.toISOString())
     const totals = new Map(members.map((m) => [m.user_id, 0]))
-    for (const r of rows ?? []) totals.set(r.user_id, (totals.get(r.user_id) ?? 0) + r.points)
+    for (const r of rows ?? []) totals.set(r.user_id, Math.round(((totals.get(r.user_id) ?? 0) + Number(r.points)) * 100) / 100)
     const [a, b] = [...members].sort((x, y) => (totals.get(y.user_id)! - totals.get(x.user_id)!))
     const pa = totals.get(a.user_id)!, pb = totals.get(b.user_id)!
     // stessa formula dell'app: distacco × €/punto, arrotondato ai 50 centesimi
@@ -88,16 +91,16 @@ async function monthly() {
     if (pa === pb) {
       await pushTo(members.map((m) => m.user_id), {
         title: `🤝 Pareggio a ${monthName}!`,
-        body: `${pa} a ${pb}: cena alla romana 🍝`, tag: `month-${start.toISOString().slice(0, 7)}`, url: './#/',
+        body: `${pts(pa)} a ${pts(pb)}: cena alla romana 🍝`, tag: `month-${start.toISOString().slice(0, 7)}`, url: './#/',
       })
     } else {
       await pushTo([a.user_id], {
         title: `🏆 Hai vinto ${monthName}!`,
-        body: `${pa} a ${pb}: ${b.display_name} ti offre una cena da ${amount} 🍽️`, tag: `month-${start.toISOString().slice(0, 7)}`, url: './#/',
+        body: `${pts(pa)} a ${pts(pb)}: ${b.display_name} ti offre una cena da ${amount} 🍽️`, tag: `month-${start.toISOString().slice(0, 7)}`, url: './#/',
       })
       await pushTo([b.user_id], {
         title: `😅 ${a.display_name} ha vinto ${monthName}`,
-        body: `${pa} a ${pb}: tocca a te offrire una cena da ${amount} 🍽️. Rifatti questo mese!`, tag: `month-${start.toISOString().slice(0, 7)}`, url: './#/',
+        body: `${pts(pa)} a ${pts(pb)}: tocca a te offrire una cena da ${amount} 🍽️. Rifatti questo mese!`, tag: `month-${start.toISOString().slice(0, 7)}`, url: './#/',
       })
     }
   }
@@ -148,7 +151,7 @@ Deno.serve(async (req) => {
       if (c.user_id !== user.id) return json({ error: 'forbidden' }, 403)
       const sent = await pushTo(others, {
         title: `${me.emoji} ${me.display_name}: ${c.chore_emoji} ${c.chore_name}`,
-        body: `+${c.points} punti in attesa della tua validazione ✅`,
+        body: `+${pts(Number(c.points))} punti in attesa della tua validazione ✅`,
         tag: `c-${c.id}`, url: './#/',
       })
       return json({ sent })
@@ -157,7 +160,7 @@ Deno.serve(async (req) => {
     if (c.reviewed_by !== user.id || c.status === 'pending') return json({ error: 'forbidden' }, 403)
     const ok = c.status === 'approved'
     const sent = await pushTo([c.user_id], {
-      title: ok ? `✅ ${c.chore_name}: +${c.points} punti!` : `❌ ${c.chore_name} rifiutata`,
+      title: ok ? `✅ ${c.chore_name}: +${pts(Number(c.points))} punti!` : `❌ ${c.chore_name} rifiutata`,
       body: ok
         ? `${me.display_name} ha validato la tua faccenda 💪`
         : `${me.display_name}: ${c.review_note || 'non ci siamo…'}`,

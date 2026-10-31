@@ -14,10 +14,10 @@ const uuid = () => crypto.randomUUID()
 type DB = AppData
 
 const DEFAULT_CHORES: [string, string, number][] = [
-  ['Lavare i piatti', '🍽️', 10], ['Lavastoviglie', '🫧', 5], ['Cucinare', '🍳', 15],
-  ['Fare la spesa', '🛒', 15], ['Aspirapolvere', '🧹', 15], ['Lavare i pavimenti', '🪣', 20],
-  ['Pulire il bagno', '🚽', 25], ['Lavatrice', '🧺', 10], ['Stendere / ritirare', '👕', 5],
-  ['Stirare', '🔥', 20], ['Buttare la spazzatura', '🗑️', 5], ['Cambiare le lenzuola', '🛏️', 10],
+  ['Lavare i piatti', '🍽️', 2], ['Lavastoviglie', '🫧', 1], ['Cucinare', '🍳', 3.5],
+  ['Fare la spesa', '🛒', 3], ['Aspirapolvere', '🧹', 3.5], ['Lavare i pavimenti', '🪣', 5],
+  ['Pulire il bagno', '🚽', 7], ['Lavatrice', '🧺', 1.5], ['Stendere / ritirare', '👕', 1.5],
+  ['Stirare', '🔥', 5], ['Buttare la spazzatura', '🗑️', 0.5], ['Cambiare le lenzuola', '🛏️', 2.5],
 ]
 
 function seed(): DB {
@@ -72,7 +72,7 @@ function seed(): DB {
     const m = new Date(now.getFullYear(), now.getMonth() - i, 1)
     return { household_id: HID, month: `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`, amount: null, paid_at: now.toISOString() }
   })
-  return { household: { id: HID, name: 'Casa nostra', invite_code: 'DEMO42', dinner_rate: 0.5 }, members, chores, completions, dinners }
+  return { household: { id: HID, name: 'Casa nostra', invite_code: 'DEMO42', dinner_rate: 2 }, members, chores, completions, dinners }
 }
 
 export function createDemoBackend(): Backend {
@@ -117,7 +117,7 @@ export function createDemoBackend(): Backend {
     },
     async load() {
       const db = read()
-      db.household.dinner_rate ??= 0.5 // dati demo salvati prima di questa opzione
+      db.household.dinner_rate ??= 2 // dati demo salvati prima di questa opzione
       return db
     },
     subscribe(_hid, onChange) {

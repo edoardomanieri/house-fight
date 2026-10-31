@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Empty, PeriodNav, StatusChip } from '../components/ui'
 import { dayKey, monthKey, monthLabel, relativeDay, shiftMonth, timeLabel } from '../lib/dates'
-import { inMonth } from '../lib/stats'
+import { addPts, formatPts, inMonth } from '../lib/stats'
 import type { Status } from '../lib/types'
 import { useGame } from '../store'
 
@@ -49,8 +49,8 @@ export function HistoryScreen() {
               <span>{relativeDay(items[0].done_at)}</span>
               <span className="muted">
                 {data.members.map((m) => {
-                  const p = pts.filter((c) => c.user_id === m.user_id).reduce((a, c) => a + c.points, 0)
-                  return p ? <span key={m.user_id} className="day-pts">{m.emoji} {p}</span> : null
+                  const p = pts.filter((c) => c.user_id === m.user_id).reduce((a, c) => addPts(a, c.points), 0)
+                  return p ? <span key={m.user_id} className="day-pts">{m.emoji} {formatPts(p)}</span> : null
                 })}
               </span>
             </div>
@@ -67,7 +67,7 @@ export function HistoryScreen() {
                       {c.review_note && <small className="note">↳ {member(c.reviewed_by)?.display_name}: “{c.review_note}”</small>}
                     </div>
                     <div className="row-side">
-                      <span className={`pts ${c.status !== 'approved' ? 'muted' : ''}`}>{c.status === 'rejected' ? <s>+{c.points}</s> : `+${c.points}`}</span>
+                      <span className={`pts ${c.status !== 'approved' ? 'muted' : ''}`}>{c.status === 'rejected' ? <s>+{formatPts(c.points)}</s> : `+${formatPts(c.points)}`}</span>
                       <StatusChip status={c.status} />
                     </div>
                   </li>

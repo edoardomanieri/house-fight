@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChoreBars, GroupedBars, RaceChart } from '../components/charts'
 import { Empty, PeriodNav, Segmented } from '../components/ui'
 import { MONTHS, MONTHS_SHORT, WEEKDAYS_SHORT, dayKey, monthKey, monthLabel, shiftMonth } from '../lib/dates'
-import { approved, bestStreak, byChore, byMonth, byWeekday, counts, cumulativeByDay, formatEur, inMonth, inYear, monthResult, totals } from '../lib/stats'
+import { addPts, approved, bestStreak, byChore, byMonth, byWeekday, counts, cumulativeByDay, formatEur, formatPts, inMonth, inYear, monthResult, totals } from '../lib/stats'
 import type { Completion, Member } from '../lib/types'
 import { useGame } from '../store'
 
@@ -92,7 +92,7 @@ export function StatsScreen() {
                   <span className="row-emoji">{r.winner ? r.winner.emoji : '🤝'}</span>
                   <div className="row-main">
                     <strong>{monthLabel(r.month)}</strong>
-                    <small>{r.winner ? `${r.winner.display_name} vince di ${r.margin} pt · cena da ${formatEur(r.amount)} offerta da ${r.loser!.display_name}` : 'Pareggio · alla romana'}</small>
+                    <small>{r.winner ? `${r.winner.display_name} vince di ${formatPts(r.margin)} pt · cena da ${formatEur(r.amount)} offerta da ${r.loser!.display_name}` : 'Pareggio · alla romana'}</small>
                   </div>
                   <span className={`chip ${paid ? 'chip-approved' : 'chip-pending'}`}>{paid ? '✓ Pagata' : '⏳ Da pagare'}</span>
                 </li>
@@ -116,7 +116,7 @@ function Tiles({ members, ok, scope, results }: { members: Member[]; ok: Complet
       {members.map((m) => (
         <div key={m.user_id} className="tile" style={{ borderTopColor: m.color }}>
           <div className="tile-who">{m.emoji} {m.display_name}</div>
-          <div className="tile-big">{pts[m.user_id]}<small> pt</small></div>
+          <div className="tile-big">{formatPts(pts[m.user_id])}<small> pt</small></div>
           <div className="tile-sub">{n[m.user_id]} faccende{rejected[m.user_id] ? ` · ${rejected[m.user_id]} rifiutate` : ''}</div>
           {results && <div className="tile-sub">🏆 {wins[m.user_id]} mesi vinti · 🍽️ {formatEur(won[m.user_id])} di cene</div>}
         </div>
@@ -137,7 +137,7 @@ function Records({ members, ok }: { members: Member[]; ok: Completion[] }) {
   const recs = members.map((m) => {
     const mine = ok.filter((c) => c.user_id === m.user_id)
     const perDay = new Map<string, number>()
-    for (const c of mine) perDay.set(dayKey(c.done_at), (perDay.get(dayKey(c.done_at)) ?? 0) + c.points)
+    for (const c of mine) perDay.set(dayKey(c.done_at), addPts(perDay.get(dayKey(c.done_at)) ?? 0, c.points))
     const best = [...perDay.entries()].sort((a, b) => b[1] - a[1])[0]
     const fav = byChore(mine, [m])[0]
     return { m, streak: bestStreak(mine, m.user_id), best, fav }
@@ -150,7 +150,7 @@ function Records({ members, ok }: { members: Member[]; ok: Completion[] }) {
           <div key={m.user_id} className="record">
             <div className="tile-who">{m.emoji} {m.display_name}</div>
             <div>🔥 Serie migliore: <b>{streak} giorni</b></div>
-            {best && <div>⚡ Giorno top: <b>{best[1]} pt</b> <span className="muted">({new Date(best[0]).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })})</span></div>}
+            {best && <div>⚡ Giorno top: <b>{formatPts(best[1])} pt</b> <span className="muted">({new Date(best[0]).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })})</span></div>}
             {fav && <div>💛 Preferita: <b>{fav.emoji} {fav.name}</b></div>}
           </div>
         ))}
