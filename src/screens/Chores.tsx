@@ -90,12 +90,18 @@ function ChoreForm({ chore, onClose }: { chore: Partial<Chore>; onClose: () => v
   const points = parsePoints(pointsText)
   const valid = !Number.isNaN(points)
   const setPoints = (v: number) => setPointsText(pointsInput(Math.min(1000, Math.max(0.5, v))))
+  // Un secondo tocco mentre il primo salvataggio è in corso creerebbe un doppione
+  const [busy, setBusy] = useState(false)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    if (!valid) return
-    const ok = await run(() => backend.saveChore({ id: chore.id, name: name.trim(), emoji, points }), chore.id ? 'Faccenda aggiornata' : 'Faccenda creata ✨')
-    if (ok !== undefined) onClose()
+    if (!valid || busy) return
+    setBusy(true)
+    // saveChore non restituisce nulla: senza il true qui, run darebbe undefined anche quando va bene
+    const ok = await run(async () => { await backend.saveChore({ id: chore.id, name: name.trim(), emoji, points }); return true },
+      chore.id ? 'Faccenda aggiornata' : 'Faccenda creata ✨')
+    setBusy(false)
+    if (ok) onClose()
   }
 
   return (
@@ -117,7 +123,7 @@ function ChoreForm({ chore, onClose }: { chore: Partial<Chore>; onClose: () => v
       </div>
       <div className="field-label">Icona</div>
       <EmojiGrid options={CHORE_EMOJIS} value={emoji} onChange={setEmoji} />
-      <button className="btn primary big" disabled={!valid}>{chore.id ? 'Salva' : 'Crea faccenda'}</button>
+      <button className="btn primary big" disabled={!valid || busy}>{chore.id ? 'Salva' : 'Crea faccenda'}</button>
       {chore.id && (
         <button type="button" className="btn ghost danger-text" onClick={async () => {
           await run(() => backend.setChoreArchived(chore.id!, true), 'Faccenda archiviata')
