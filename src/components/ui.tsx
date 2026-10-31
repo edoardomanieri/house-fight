@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
-import type { Member } from '../lib/types'
+import { formatPts, parsePoints, POINT_PRESETS, pointsInput } from '../lib/stats'
+import type { Completion, Member } from '../lib/types'
 
 // Palette validata per daltonismo (vedi README): il partner non può scegliere lo stesso colore
 export const PLAYER_COLORS = ['#eb6834', '#2a78d6', '#1baf7a', '#6250d6', '#e87ba4', '#eda100', '#008300', '#e34948']
@@ -87,6 +88,35 @@ export function Empty({ emoji, children }: { emoji: string; children: ReactNode 
 /** Faccenda fatta a metà: vale metà dei punti */
 export function HalfTag() {
   return <span className="chip chip-half" title="Fatta a metà: metà dei punti">½ metà</span>
+}
+
+/** Una tantum: non viene da una faccenda salvata */
+export function OneOffTag() {
+  return <span className="chip chip-half" title="Faccenda una tantum: non è tra quelle salvate">✨ una tantum</span>
+}
+
+/** Le etichette di una faccenda segnata: fatta a metà, una tantum */
+export function CompletionTags({ c }: { c: Completion }) {
+  return <>{c.half && <HalfTag />}{c.one_off && <OneOffTag />}</>
+}
+
+/** Valore in punti: −/+ di mezzo punto, campo libero (2,5) e scorciatoie della scala */
+export function PointsField({ text, onChange }: { text: string; onChange: (text: string) => void }) {
+  const points = parsePoints(text)
+  const valid = !Number.isNaN(points)
+  const set = (v: number) => onChange(pointsInput(Math.min(1000, Math.max(0.5, v))))
+  return (
+    <>
+      <div className="stepper">
+        <button type="button" onClick={() => set((valid ? points : 0) - 0.5)}>−0,5</button>
+        <input inputMode="decimal" aria-label="Punti" aria-invalid={!valid} value={text} onChange={(e) => onChange(e.target.value)} />
+        <button type="button" onClick={() => set((valid ? points : 0) + 0.5)}>+0,5</button>
+      </div>
+      <div className="chips">
+        {POINT_PRESETS.map((p) => <button type="button" key={p} className={points === p ? 'on' : ''} onClick={() => set(p)}>{formatPts(p)}</button>)}
+      </div>
+    </>
+  )
 }
 
 export function StatusChip({ status }: { status: 'pending' | 'approved' | 'rejected' }) {

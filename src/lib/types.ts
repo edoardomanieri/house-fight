@@ -36,6 +36,8 @@ export interface Completion {
   points: number
   /** Fatta a metà: vale metà dei punti della faccenda */
   half: boolean
+  /** Una tantum: non viene da una faccenda salvata (chore_id è null), nome e punti li ha scelti chi l'ha fatta */
+  one_off: boolean
   user_id: string
   done_at: string
   note: string | null
@@ -100,6 +102,8 @@ export interface Backend {
   setChoreArchived(id: string, archived: boolean): Promise<void>
 
   logCompletion(choreId: string, opts: { note?: string; doneAt?: Date; half?: boolean }): Promise<Completion>
+  /** Faccenda una tantum: va validata come le altre ma non finisce tra le faccende salvate */
+  logOneOff(chore: { name: string; emoji: string; points: number }, opts: { note?: string; doneAt?: Date }): Promise<Completion>
   reviewCompletion(id: string, approve: boolean, note?: string): Promise<Completion>
   deleteCompletion(id: string): Promise<void>
   setDinnerPaid(month: string, paid: boolean, amount?: number): Promise<void>

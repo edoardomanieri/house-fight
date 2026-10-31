@@ -10,6 +10,18 @@ const pts = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 2 })
 /** 10 oppure 2,5 */
 export const formatPts = (v: number) => pts.format(v)
 
+/** Scala: la faccenda più pesante vale 7, una facile tra 0,5 e 1,5 */
+export const POINT_PRESETS = [0.5, 1, 1.5, 2, 3, 5, 7]
+
+/** Il valore come si scrive nel campo, senza separatore delle migliaia: 2,5 */
+export const pointsInput = (v: number) => String(v).replace('.', ',')
+
+/** "2,5" o "2.5" → 2.5; NaN se non è un valore valido (più di 0, al massimo 1000, due decimali) */
+export function parsePoints(text: string) {
+  const v = Number(text.trim().replace(',', '.'))
+  return text.trim() !== '' && v > 0 && v <= 1000 && Math.abs(Math.round(v * 100) - v * 100) < 1e-6 ? v : NaN
+}
+
 export const approved = (cs: Completion[]) => cs.filter((c) => c.status === 'approved')
 
 export function inMonth(cs: Completion[], key: string) {
