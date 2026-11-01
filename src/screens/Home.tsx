@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent, type MouseEvent } from 'react'
-import { Avatar, CHORE_EMOJIS, CompletionTags, EmojiGrid, Empty, PointsField, Sheet } from '../components/ui'
+import { Avatar, CHORE_EMOJIS, CompletionTags, EmojiGrid, Empty, matchesSearch, PointsField, SearchBar, Sheet } from '../components/ui'
 import { daysLeftInMonth, monthKey, monthLabel, shiftMonth, timeAgo, relativeDay } from '../lib/dates'
 import { confetti, floatPoints, haptic } from '../lib/fx'
 import { addPts, approved, currentStreak, dinnerValue, formatEur, formatPts, inMonth, monthResult, parsePoints, totals } from '../lib/stats'
@@ -24,6 +24,8 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
     return u
   }, [data.completions, me.user_id])
   const sortedChores = [...chores].sort((a, b) => (usage.get(b.id) ?? 0) - (usage.get(a.id) ?? 0))
+  const [query, setQuery] = useState('')
+  const shownChores = sortedChores.filter((c) => matchesSearch(c.name, query))
 
   const [logging, setLogging] = useState<Chore | null>(null)
   const [oneOff, setOneOff] = useState(false)
@@ -167,15 +169,18 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
           <h2>Ho appena fatto…</h2>
           <button className="link" onClick={() => go('faccende')}>Gestisci</button>
         </div>
+        {chores.length > 0 && <SearchBar value={query} onChange={setQuery} placeholder="Cerca una faccenda" />}
         {chores.length === 0 && <Empty emoji="🧹">Nessuna faccenda. Creane una!</Empty>}
+        {chores.length > 0 && shownChores.length === 0 && <Empty emoji="🔍">Nessuna faccenda per “{query.trim()}”.</Empty>}
         <div className="chore-grid">
-          {sortedChores.map((c) => (
+          {shownChores.map((c) => (
             <button key={c.id} className="chore-tile" onClick={() => { haptic(8); setLogging(c) }}>
               <span className="tile-emoji">{c.emoji}</span>
               <span className="tile-name">{c.name}</span>
               <span className="tile-pts">{formatPts(c.points)} pt</span>
             </button>
           ))}
+          {/* Sempre visibile, anche quando la ricerca non trova niente: è la via per una cosa nuova */}
           <button className="chore-tile one-off-tile" onClick={() => { haptic(8); setOneOff(true) }}>
             <span className="tile-emoji">✨</span>
             <span className="tile-name">Una tantum</span>

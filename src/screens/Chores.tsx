@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { CHORE_EMOJIS, EmojiGrid, Empty, PointsField, Sheet } from '../components/ui'
+import { CHORE_EMOJIS, EmojiGrid, Empty, matchesSearch, PointsField, SearchBar, Sheet } from '../components/ui'
 import { formatPts, parsePoints, pointsInput } from '../lib/stats'
 import type { Chore } from '../lib/types'
 import { useGame } from '../store'
@@ -15,8 +15,11 @@ export function ChoresScreen() {
     return m
   }, [data.completions])
 
-  const active = data.chores.filter((c) => !c.archived).sort((a, b) => b.points - a.points || a.name.localeCompare(b.name))
-  const archived = data.chores.filter((c) => c.archived)
+  const [query, setQuery] = useState('')
+  const searching = query.trim() !== ''
+  const found = data.chores.filter((c) => matchesSearch(c.name, query))
+  const active = found.filter((c) => !c.archived).sort((a, b) => b.points - a.points || a.name.localeCompare(b.name))
+  const archived = found.filter((c) => c.archived)
 
   return (
     <div className="screen">
@@ -26,7 +29,10 @@ export function ChoresScreen() {
       </div>
       <p className="muted">Il valore conta per le faccende segnate da ora in poi: quelle già fatte tengono i punti di allora.
         Per una cosa che capita una volta sola usa <b>✨ Una tantum</b> nella Sfida: non finisce in questa lista.</p>
-      {active.length === 0 ? <Empty emoji="🧹">Ancora nessuna faccenda.</Empty> : (
+      {data.chores.length > 0 && <SearchBar value={query} onChange={setQuery} placeholder="Cerca una faccenda" />}
+      {active.length === 0 ? (searching
+        ? <Empty emoji="🔍">Nessuna faccenda attiva per “{query.trim()}”.</Empty>
+        : <Empty emoji="🧹">Ancora nessuna faccenda.</Empty>) : (
         <ul className="list">
           {active.map((c) => (
             <li key={c.id} className="row clickable" onClick={() => setEditing(c)}>
@@ -41,10 +47,11 @@ export function ChoresScreen() {
 
       {archived.length > 0 && (
         <>
-          <button className="link block" onClick={() => setShowArchived(!showArchived)}>
-            {showArchived ? '▾' : '▸'} Archiviate ({archived.length})
+          {/* Durante la ricerca le archiviate trovate restano aperte */}
+          <button className="link block" disabled={searching} onClick={() => setShowArchived(!showArchived)}>
+            {showArchived || searching ? '▾' : '▸'} Archiviate ({archived.length})
           </button>
-          {showArchived && (
+          {(showArchived || searching) && (
             <ul className="list faded">
               {archived.map((c) => (
                 <li key={c.id} className="row">
