@@ -180,6 +180,8 @@ main { padding: 0 16px calc(var(--tabbar) + 28px + env(safe-area-inset-bottom));
   border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); transition: transform 0.12s;
 }
 .chore-tile:active { transform: scale(0.94); }
+.one-off-tile { border-style: dashed; border-width: 1.5px; background: transparent; box-shadow: none; }
+.one-off-tile .tile-pts { color: var(--muted); font-weight: 700; }
 .tile-emoji { font-size: 1.9rem; }
 .tile-name { font-size: 0.8rem; font-weight: 600; text-align: center; line-height: 1.2; min-height: 2.4em; display: flex; align-items: center; }
 .tile-pts { font-size: 0.75rem; font-weight: 800; color: var(--accent); }

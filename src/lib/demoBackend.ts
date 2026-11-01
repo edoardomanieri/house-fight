@@ -52,7 +52,7 @@ function seed(): DB {
         const status = fresh ? 'pending' : rand() < 0.95 ? 'approved' : 'rejected'
         completions.push({
           id: uuid(), household_id: HID, chore_id: c.id, chore_name: c.name, chore_emoji: c.emoji,
-          points: c.points, half: false, user_id: u, done_at: when.toISOString(), note: null, status,
+          points: c.points, half: false, one_off: false, user_id: u, done_at: when.toISOString(), note: null, status,
           reviewed_by: status === 'pending' ? null : u === ME ? PARTNER : ME,
           reviewed_at: status === 'pending' ? null : when.toISOString(),
           review_note: status === 'rejected' ? 'Mmm… non mi risulta 🤨' : null,
@@ -67,7 +67,7 @@ function seed(): DB {
     const when = new Date(now.getTime() - hoursAgo * 3600 * 1000).toISOString()
     completions.push({
       id: uuid(), household_id: HID, chore_id: c.id, chore_name: c.name, chore_emoji: c.emoji,
-      points: half ? halfPoints(c.points) : c.points, half,
+      points: half ? halfPoints(c.points) : c.points, half, one_off: false,
       user_id: PARTNER, done_at: when, note, status: 'pending', reviewed_by: null, reviewed_at: null, review_note: null, created_at: when,
     })
   }
@@ -152,7 +152,18 @@ export function createDemoBackend(): Backend {
       const now = new Date().toISOString()
       const comp: Completion = {
         id: uuid(), household_id: HID, chore_id: c.id, chore_name: c.name, chore_emoji: c.emoji,
-        points: half ? halfPoints(c.points) : c.points, half: !!half,
+        points: half ? halfPoints(c.points) : c.points, half: !!half, one_off: false,
+        user_id: currentUser(), done_at: (doneAt ?? new Date()).toISOString(), note: note || null, status: 'pending',
+        reviewed_by: null, reviewed_at: null, review_note: null, created_at: now,
+      }
+      mutate((d) => { d.completions.unshift(comp) }, { kind: 'completion_created', completion: comp })
+      return comp
+    },
+    async logOneOff({ name, emoji, points }, { note, doneAt }) {
+      const now = new Date().toISOString()
+      const comp: Completion = {
+        id: uuid(), household_id: HID, chore_id: null, chore_name: name.trim(), chore_emoji: emoji || '✨',
+        points, half: false, one_off: true,
         user_id: currentUser(), done_at: (doneAt ?? new Date()).toISOString(), note: note || null, status: 'pending',
         reviewed_by: null, reviewed_at: null, review_note: null, created_at: now,
       }

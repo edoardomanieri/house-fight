@@ -1,5 +1,8 @@
 // House Fight – service worker: cache offline dell'app + notifiche push
-const CACHE = 'house-fight-v1'
+// L'identificativo in VERSION viene sostituito a ogni build (vedi vite.config.ts): così ogni deploy cambia questo file,
+// il browser installa il nuovo service worker, butta la cache vecchia e l'app si ricarica da sola.
+const VERSION = '__BUILD_ID__'
+const CACHE = `house-fight-${VERSION}`
 const SHELL = ['./', './manifest.webmanifest', './icons/icon-192.png', './icons/badge-96.png']
 
 self.addEventListener('install', (event) => {
@@ -19,11 +22,15 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url)
   if (req.method !== 'GET' || url.origin !== self.location.origin) return
 
-  // Pagina: rete prima (per avere sempre l'ultima versione), cache se offline
+  // Pagina: rete prima (per avere sempre l'ultima versione), cache se offline.
+  // no-cache: mai la copia della cache HTTP del browser, sempre controllata col server
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req)
-        .then((res) => { caches.open(CACHE).then((c) => c.put('./', res.clone())); return res })
+      fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
+        .then((res) => {
+          if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put('./', copy)) }
+          return res
+        })
         .catch(() => caches.match('./')),
     )
     return
