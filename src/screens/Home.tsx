@@ -1,5 +1,5 @@
 import { useMemo, useState, type MouseEvent } from 'react'
-import { Avatar, Empty, HalfTag, Sheet } from '../components/ui'
+import { Avatar, Empty, HalfTag, matchesSearch, SearchBar, Sheet } from '../components/ui'
 import { daysLeftInMonth, monthKey, monthLabel, shiftMonth, timeAgo, relativeDay } from '../lib/dates'
 import { confetti, floatPoints, haptic } from '../lib/fx'
 import { addPts, approved, currentStreak, dinnerValue, formatEur, formatPts, inMonth, monthResult, totals } from '../lib/stats'
@@ -24,6 +24,8 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
     return u
   }, [data.completions, me.user_id])
   const sortedChores = [...chores].sort((a, b) => (usage.get(b.id) ?? 0) - (usage.get(a.id) ?? 0))
+  const [query, setQuery] = useState('')
+  const shownChores = sortedChores.filter((c) => matchesSearch(c.name, query))
 
   const [logging, setLogging] = useState<Chore | null>(null)
   const [rejecting, setRejecting] = useState<Completion | null>(null)
@@ -166,9 +168,11 @@ export function HomeScreen({ go }: { go: (tab: string) => void }) {
           <h2>Ho appena fatto…</h2>
           <button className="link" onClick={() => go('faccende')}>Gestisci</button>
         </div>
-        {chores.length === 0 ? <Empty emoji="🧹">Nessuna faccenda. Creane una!</Empty> : (
+        {chores.length > 0 && <SearchBar value={query} onChange={setQuery} placeholder="Cerca una faccenda" />}
+        {chores.length === 0 ? <Empty emoji="🧹">Nessuna faccenda. Creane una!</Empty>
+          : shownChores.length === 0 ? <Empty emoji="🔍">Nessuna faccenda per “{query.trim()}”.</Empty> : (
           <div className="chore-grid">
-            {sortedChores.map((c) => (
+            {shownChores.map((c) => (
               <button key={c.id} className="chore-tile" onClick={() => { haptic(8); setLogging(c) }}>
                 <span className="tile-emoji">{c.emoji}</span>
                 <span className="tile-name">{c.name}</span>

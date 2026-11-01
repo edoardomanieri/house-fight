@@ -84,6 +84,26 @@ export function Empty({ emoji, children }: { emoji: string; children: ReactNode 
   return <div className="empty"><span>{emoji}</span><p>{children}</p></div>
 }
 
+/** Minuscolo e senza accenti: "lavatrice" trova "Lavatrice", "caffe" trova "Caffè" */
+const fold = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim()
+
+/** Vero se ogni parola cercata compare nel testo, in qualsiasi ordine */
+export function matchesSearch(text: string, query: string) {
+  const t = fold(text)
+  return fold(query).split(/\s+/).every((w) => t.includes(w))
+}
+
+export function SearchBar({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <div className="search">
+      <span className="search-icon" aria-hidden>🔍</span>
+      <input type="search" enterKeyHint="search" aria-label={placeholder} placeholder={placeholder} value={value}
+        onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && onChange('')} />
+      {value && <button type="button" className="search-clear" aria-label="Cancella ricerca" onClick={() => onChange('')}>✕</button>}
+    </div>
+  )
+}
+
 /** Faccenda fatta a metà: vale metà dei punti */
 export function HalfTag() {
   return <span className="chip chip-half" title="Fatta a metà: metà dei punti">½ metà</span>
